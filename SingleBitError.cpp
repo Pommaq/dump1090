@@ -4,7 +4,7 @@
 
 
 
-__constant int modes_checksum_table[112] = {
+__constant unsigned int modes_checksum_table[112] = {
         0x3935ea, 0x1c9af5, 0xf1b77e, 0x78dbbf, 0xc397db, 0x9e31e9, 0xb0e2f0, 0x587178,
         0x2c38bc, 0x161c5e, 0x0b0e2f, 0xfa7d13, 0x82c48d, 0xbe9842, 0x5f4c21, 0xd05c14,
         0x682e0a, 0x341705, 0xe5f186, 0x72f8c3, 0xc68665, 0x9cb936, 0x4e5c9b, 0xd8d449,
@@ -21,7 +21,7 @@ __constant int modes_checksum_table[112] = {
         0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
 };
 
-__constant bitmasks[] = {
+__constant unsigned int bitmasks[] = {
         0b10000000, 0b1000000, 0b100000, 0b10000, 0b1000, 0b100, 0b10, 0b1
 };
 int modesChecksum(unsigned char *msg, int bits) {
@@ -50,8 +50,8 @@ __kernel void fixSingleBitErrors(__global unsigned char* msg, __global int* bits
     size_t j = get_global_id(0);
     unsigned char aux[MODES_LONG_MSG_BITS/8]; // NOTE: Might have to allocate in main memory and give to pointer.
     size_t byte = j/8;
-    int bitmask = 1 << (7 - (j % 8));
-    int crc1, crc2;
+    unsigned int bitmask = 1 << (7 - (j % 8));
+    unsigned int crc1, crc2;
 
     for (int i = 0; i < (*bits)/8; i+=2){
         aux[i] = msg[i];

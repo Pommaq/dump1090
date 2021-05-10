@@ -8,47 +8,76 @@
 
 
 
-MAIN_DISPLAY_THREAD:
-    lock(finished_packets);
-    while (finished_packets != EMPTY){
-        display(finished_packets.pop());
-    }
-    unlock(finished_packets);
+MAIN THREAD:
+    packet = Finished_packets.pop();
+    // fix_packet is placed into GPU_LOADER_THREAD now
+    Display_Packet();
 
-
-MAIN_PACKET_THREAD:
-    packet = retrieve_packet();
-    if (packet_needs_fixing){
-        lock(unfinished_pack_queue);
-        unfinished_pack_queue.add(packet);
-        unlock(unfinished_pack_queue);
-    }
-    else{
-        lock(finished_packets);
-        finished_packets.add(packet);
-        unlock(finished_packets);
-
-    }
-
+SDR_THREAD:
+    rawPacketsQueue.insert(Get_data());
 
 GPU_LOADER_THREAD:
-    lock(unfinished_pack_queue);
-    while (unfinished_pack_queue != EMPTY){
-        feed_to_gpu(unfinished_pack_queue.pop());
+    for packet in rawPacketsQueue{
+        packet = rawPacketsQueue.pop();
+        Load_GPU(packet);
     }
-    unlock(unfinished_pack_queue);
-    spin_wait(gpu);
-
-    for (returned_packets: gpu){
-        calculate_crcs();
-        if (fixed){
-            lock(finished_packets) // else spinlock
-            add_to_finished_packets();
-            unlock(finished_packets)
-        }
-    }
-
-
+    wait(GPU);
+    for packet in GPUOutputPacketsQueue:
+        if calculate_crc(packet) == GPUOutputPacketsQueue.crc:
+            Finished_packets.insert(packet);
 
  */
+#include <mutex>
+#include <vector>
+#include <atomic>
+#include <semaphore>
+#include "PacketHandling.h"
 
+
+
+bool init_gpu(){
+    /*Get device context, devices, create a queue, compile kernel. */
+
+}
+void insert_packet(packet& to_store, std::vector<packet>& storage, std::muted& mutx){
+    while(std::mutex::try_lock(mutx));
+    storage.push_back(to_store);
+    std::mutex::unlock(mutx);
+}
+
+
+void gpu_loader(){
+    static std::vector<packet> fixed_packets;
+    OpenCL_dat gpu_data = init_gpu();
+    if (gpu_data.error == ERROR){
+        modes.exit = true; // An error occured. Signal other threads to exit
+    }
+    while (!modes.exit){
+        while(std::mutex::try_lock(m_raw_packets)); // spinlock
+        if (raw_packets.size() > 0){
+            for (auto r_packet: raw_packets){
+                raw_packets.pop_back();
+                if (packet_needs_fixing(r_packet)){
+                    load_gpu(r_packet);
+                }
+                else{
+                    insert_packet(r_packet, finished_packets, m_finished_packets);
+                }
+            }
+            raw_packets.clear();
+            std::mutex::unlock(m_raw_packets);
+            clFinish(g_OpenCL_Dat.queue); // TODO: Replace with C++ equivalent
+
+            fixed_packets = get_returns(gpu); // TODO: Implement
+            for (packet& f_packet: fixed_packets){
+                unsigned int crc2 = calculate_crc(f_packet);
+                if (crc1 == crc2){
+                    insert_packet(f_packet, finished_packets, m_finished_packets);
+                }
+            }
+            fixed_packets.clear();
+
+        }
+        // else exit
+    }
+}

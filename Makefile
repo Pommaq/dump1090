@@ -2,13 +2,13 @@ CFLAGS?= -O0 -g3 -Wall -W $(shell pkg-config --cflags librtlsdr)  -I/opt/intel/s
 LDLIBS+=$(shell pkg-config --libs librtlsdr) -lpthread -lm
 CC?=gcc
 PROGNAME=dump1090
-OPENCL_FLAGS=-DOPENCL -lOpenCL -L/opt/intel/system_studio_2019/opencl/SDK/lib64
+OPENCL_FLAGS=#-DOPENCL -lOpenCL -L/opt/intel/system_studio_2019/opencl/SDK/lib64
 all: dump1090
 
 %.o: %.c
 	$(CC) $(CFLAGS) ${OPENCL_FLAGS} -c $<
 
-dump1090: dump1090.o anet.o
+dump1090: dump1090.o anet.o GPUPreparations.o PacketHandling.o
 	$(CC) -g -o dump1090 dump1090.o anet.o $(LDFLAGS) $(LDLIBS) ${OPENCL_FLAGS}
 
 clean:
