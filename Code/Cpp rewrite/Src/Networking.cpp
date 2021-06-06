@@ -418,3 +418,8 @@ int handleHTTPRequest( client *c) {
     return !keepalive;
 }
 
+netservices::netservices(const char *ndesc, int &nsoc, int nport) {
+    this->descr = ndesc;
+    this->socket = &nsoc;
+    this->port = nport;
+}
