@@ -111,7 +111,8 @@ void readDataFromFile() {
             Modes.exit = true;
         }
     }
-    Modes.data_lock->lock();
+    //Modes.data_cond.wait(*Modes.data_lock);
+    Modes.mtx.lock(); // Our main thread should have noted we have no data and gone to sleep at this point
     while (!Modes.exit) {
         ssize_t nread, toread;
         unsigned char *p;

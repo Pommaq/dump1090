@@ -93,7 +93,9 @@ void backgroundTasks() {
     }
 }
 
-
+bool eval(){
+    return Modes.data_ready == 1;
+}
 int main(int argc, char **argv) {
     int j;
 
@@ -225,28 +227,30 @@ int main(int argc, char **argv) {
 
 
     /* Create the thread that will read the data from the device. */
-    Modes.data_lock->lock();
     Modes.reader_thread = std::thread(readerThreadEntryPoint, nullptr);
+    for (int i = 0; i < 1000; i++); // Give the 2nd thread some time to reach its first lock
     while (!Modes.exit) {
         if (!Modes.data_ready) {
-            Modes.data_lock->unlock();
-            Modes.data_cond.wait(*Modes.data_lock);
+            Modes.mtx.unlock();
+            Modes.data_cond.wait(*Modes.data_lock);//, eval);
             continue;
         }
-        computeMagnitudeVector();
+        computeMagnitudeVector(); // Calculates stuff. No copies
 
-        /* Signal to the other thread that we processed the available data
-         * and we want more (useful for --ifile). */
-        Modes.data_ready = 0;
-        Modes.data_cond.notify_one();
 
         /* Process data after releasing the lock, so that the capturing
          * thread can read data while we perform computationally expensive
          * stuff * at the same time. */
-        Modes.data_lock->unlock();
+        Modes.mtx.unlock();
+        /* Signal to the other thread that we processed the available data
+         * and we want more (useful for --ifile). */
+        Modes.data_ready = 0;
+
+        Modes.data_cond.notify_one();
+
         detectModeS(Modes.magnitude, Modes.data_len / 2);
         backgroundTasks();
-        Modes.data_lock->lock();
+        Modes.mtx.lock();
     }
 
     /* If --ifile and --stats were given, print statistics. */

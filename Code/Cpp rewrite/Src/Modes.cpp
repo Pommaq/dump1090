@@ -90,7 +90,6 @@ void modesInit() {
 
 g_settings::g_settings() {
     this->data_lock = new std::unique_lock<std::mutex>(mtx);
-    this->data_lock->unlock();
     /* Mutex to synchronize buffer access. */
 }
 
