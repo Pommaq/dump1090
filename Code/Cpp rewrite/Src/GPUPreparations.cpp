@@ -2,7 +2,7 @@
 // Created by Timmy on 4/15/2021.
 //
 
-#include "../Headers/GPUPreparations.h"
+#include "../Headers/GPUPreparations.hpp"
 
 std::string readcode(std::string const& filename) {
   // TODO: Avoid unnecessary copies with std::move

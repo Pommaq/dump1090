@@ -2,8 +2,8 @@
 // Created by Timmy on 4/14/2021.
 //
 
-#ifndef DUMP1090_PACKETHANDLING_H
-#define DUMP1090_PACKETHANDLING_H
+#ifndef DUMP1090_PACKETHANDLING_HPP
+#define DUMP1090_PACKETHANDLING_HPP
 
 #include <mutex>
 #include <vector>
@@ -30,4 +30,4 @@ std::vector<packet> finished_packets;
 
 
 
-#endif //DUMP1090_PACKETHANDLING_H
+#endif //DUMP1090_PACKETHANDLING_HPP

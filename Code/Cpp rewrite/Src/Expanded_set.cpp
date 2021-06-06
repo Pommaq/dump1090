@@ -2,7 +2,7 @@
 // Created by timmy on 2021-06-05.
 //
 
-#include "../Headers/Expanded_set.h"
+#include "../Headers/Expanded_set.hpp"
 
 template<typename T>
 void eset<T>::insert_packet(packet &to_store) {

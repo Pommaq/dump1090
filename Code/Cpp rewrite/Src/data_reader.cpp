@@ -1,14 +1,21 @@
 //
 // Created by timmy on 2021-06-05.
 //
-#include "../Headers/data_reader.h"
+#include "../Headers/data_reader.hpp"
 #include <cstring>
+#include <fstream>
 #include <iostream>
+#include <unistd.h>
+extern g_settings Modes;
 /* =============================== RTLSDR handling ========================== */
 
-void modesInitRTLSDR(void) {
+void modesInitRTLSDR() {
+    /*
+     *  Checks for and chooses an RTL_SDR device and prepares it by setting
+     *  gain and frequencies accordingly to what we specify.
+     */
   int j;
-  int device_count;
+  uint32_t device_count;
   int ppm_error = 0;
   char vendor[256], product[256], serial[256];
 
@@ -68,7 +75,7 @@ void modesInitRTLSDR(void) {
 void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
   MODES_NOTUSED(ctx);
 
-  pthread_mutex_lock(&Modes.data_mutex);
+  Modes.data_lock.lock();
   if (len > MODES_DATA_LEN)
     len = MODES_DATA_LEN;
   /* Move the last part of the previous buffer, that was not processed,
@@ -78,29 +85,29 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
   memcpy(Modes.data + (MODES_FULL_LEN - 1) * 4, buf, len);
   Modes.data_ready = 1;
   /* Signal to the other thread that new data is ready */
-  pthread_cond_signal(&Modes.data_cond);
-  pthread_mutex_unlock(&Modes.data_mutex);
+  Modes.data_cond.notify_one();
+  Modes.data_lock.unlock();
 }
 
 /* This is used when --ifile is specified in order to read data from file
  * instead of using an RTLSDR device. */
-void readDataFromFile(void) {
-  pthread_mutex_lock(&Modes.data_mutex);
-  while (true) {
+void readDataFromFile() {
+    Modes.data_lock.lock();
+  while (!Modes.exit) {
     ssize_t nread, toread;
     unsigned char *p;
 
     if (Modes.data_ready) {
-      pthread_cond_wait(&Modes.data_cond, &Modes.data_mutex);
+        Modes.data_cond.wait(Modes.data_lock);
       continue;
     }
 
     if (Modes.interactive) {
       /* When --ifile and --interactive are used together, slow down
        * playing at the natural rate of the RTLSDR received. */
-      pthread_mutex_unlock(&Modes.data_mutex);
+        Modes.data_lock.unlock();
       usleep(5000);
-      pthread_mutex_lock(&Modes.data_mutex);
+      Modes.data_lock.lock();
     }
 
     /* Move the last part of the previous buffer, that was not processed,
@@ -109,6 +116,7 @@ void readDataFromFile(void) {
     toread = MODES_DATA_LEN;
     p = Modes.data + (MODES_FULL_LEN - 1) * 4;
     while (toread) {
+
       nread = read(Modes.fd, p, toread);
       /* In --file mode, seek the file again from the start
        * and re-play it if --loop was given. */
@@ -132,7 +140,7 @@ void readDataFromFile(void) {
     }
     Modes.data_ready = 1;
     /* Signal to the other thread that new data is ready */
-    pthread_cond_signal(&Modes.data_cond);
+    Modes.data_cond.notify_one();
   }
 }
 
@@ -148,4 +156,27 @@ void *readerThreadEntryPoint(void *arg) {
     readDataFromFile();
   }
   return nullptr;
+}
+
+
+void modesInitConfig() {
+    Modes.gain = MODES_MAX_GAIN;
+    Modes.dev_index = 0;
+    Modes.enable_agc = 0;
+    Modes.freq = MODES_DEFAULT_FREQ;
+    Modes.filename = NULL;
+    Modes.fix_errors = 1;
+    Modes.check_crc = 1;
+    Modes.raw = 0;
+    Modes.net = 0;
+    Modes.net_only = 0;
+    Modes.onlyaddr = 0;
+    Modes.debug = 0;
+    Modes.interactive = 0;
+    Modes.interactive_rows = MODES_INTERACTIVE_ROWS;
+    Modes.interactive_ttl = MODES_INTERACTIVE_TTL;
+    Modes.aggressive = 0;
+    Modes.interactive_rows = getTermRows();
+    Modes.loop = 0;
+    Modes.html_file = P_FILE_GMAP;
 }

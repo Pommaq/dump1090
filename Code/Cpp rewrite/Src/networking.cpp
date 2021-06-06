@@ -43,7 +43,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "anet.h"
+#include "../Headers/networking.hpp"
 
 static void anetSetError(char *err, const char *fmt, ...)
 {

@@ -45,6 +45,7 @@
 #include <sys/select.h>
 #include "rtl-sdr.h"
 #include "anet.h"
+
 #ifdef OPENCL
 #define CL_TARGET_OPENCL_VERSION 220
 #include <CL/cl.h>
@@ -108,7 +109,7 @@
 struct client {
     int fd;         /* File descriptor. */
     int service;    /* TCP port the client is connected to. */
-    char buf[MODES_CLIENT_BUF_SIZE+1];    /* Read buffer. */
+    char buf[MODES_CLIENT_BUF_SIZE + 1];    /* Read buffer. */
     int buflen;                         /* Amount of data on buffer. */
 };
 
@@ -166,7 +167,7 @@ struct {
 
     /* Configuration */
     char *filename;                 /* Input form file, --ifile option. */
-    char* html_file;                /* HTML file to load, --html_file, defaults to P_FILE_GMAP"*/
+    char *html_file;                /* HTML file to load, --html_file, defaults to P_FILE_GMAP"*/
     int loop;                       /* Read input file again and again. */
     int fix_errors;                 /* Single bit error correction if true. */
     int check_crc;                  /* Only display messages with good CRC. */
@@ -733,14 +734,23 @@ struct modesMessage {
 };
 
 void interactiveShowData(void);
-struct aircraft* interactiveReceiveData(struct modesMessage *mm);
+
+struct aircraft *interactiveReceiveData(struct modesMessage *mm);
+
 void modesSendRawOutput(struct modesMessage *mm);
+
 void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a);
+
 void useModesMessage(struct modesMessage *mm);
+
 int fixSingleBitErrors(unsigned char *msg, int bits);
+
 int fixTwoBitsErrors(unsigned char *msg, int bits);
+
 int modesMessageLenByType(int type);
+
 void sigWinchCallback();
+
 int getTermRows();
 
 /* ============================= Utility functions ========================== */
@@ -750,8 +760,8 @@ static long long mstime(void) {
     long long mst;
 
     gettimeofday(&tv, NULL);
-    mst = ((long long)tv.tv_sec)*1000;
-    mst += tv.tv_usec/1000;
+    mst = ((long long) tv.tv_sec) * 1000;
+    mst += tv.tv_usec / 1000;
     return mst;
 }
 
@@ -782,27 +792,27 @@ void modesInitConfig(void) {
 void modesInit(void) {
     int i, q;
 
-    pthread_mutex_init(&Modes.data_mutex,NULL);
-    pthread_cond_init(&Modes.data_cond,NULL);
+    pthread_mutex_init(&Modes.data_mutex, NULL);
+    pthread_cond_init(&Modes.data_cond, NULL);
     /* We add a full bitf_message minus a final bit to the length, so that we
      * can carry the remaining part of the buffer that we can't process
      * in the bitf_message detection loop, back at the start of the next data
      * to process. This way we are able to also detect messages crossing
      * two reads. */
-    Modes.data_len = MODES_DATA_LEN + (MODES_FULL_LEN-1)*4;
+    Modes.data_len = MODES_DATA_LEN + (MODES_FULL_LEN - 1) * 4;
     Modes.data_ready = 0;
     /* Allocate the ICAO address cache. We use two uint32_t for every
      * entry because it's a addr / timestamp pair for every entry. */
-    Modes.icao_cache = malloc(sizeof(uint32_t)*MODES_ICAO_CACHE_LEN*2);
-    memset(Modes.icao_cache,0,sizeof(uint32_t)*MODES_ICAO_CACHE_LEN*2);
+    Modes.icao_cache = malloc(sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
+    memset(Modes.icao_cache, 0, sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
     Modes.aircrafts = NULL;
     Modes.interactive_last_update = 0;
     if ((Modes.data = malloc(Modes.data_len)) == NULL ||
-        (Modes.magnitude = malloc(Modes.data_len*2)) == NULL) {
+        (Modes.magnitude = malloc(Modes.data_len * 2)) == NULL) {
         fprintf(stderr, "Out of memory allocating data buffer.\n");
         exit(1);
     }
-    memset(Modes.data,127,Modes.data_len);
+    memset(Modes.data, 127, Modes.data_len);
     /* Populate the I/Q -> Magnitude lookup table. It is used because
      * sqrt or round may be expensive and may vary a lot depending on
      * the libc used.
@@ -810,10 +820,10 @@ void modesInit(void) {
      * We scale to 0-255 range multiplying by 1.4 in order to ensure that
      * every different I/Q pair will result in a different magnitude value,
      * not losing any resolution. */
-    Modes.maglut = malloc(129*129*2);
+    Modes.maglut = malloc(129 * 129 * 2);
     for (i = 0; i <= 128; i++) {
         for (q = 0; q <= 128; q++) {
-            Modes.maglut[i*129+q] = round(sqrt(i*i+q*q)*360);
+            Modes.maglut[i * 129 + q] = round(sqrt(i * i + q * q) * 360);
         }
     }
 
@@ -868,11 +878,11 @@ void modesInitRTLSDR(void) {
             int gains[100];
 
             numgains = rtlsdr_get_tuner_gains(Modes.dev, gains);
-            Modes.gain = gains[numgains-1];
-            fprintf(stderr, "Max available gain is: %.2f\n", Modes.gain/10.0);
+            Modes.gain = gains[numgains - 1];
+            fprintf(stderr, "Max available gain is: %.2f\n", Modes.gain / 10.0);
         }
         rtlsdr_set_tuner_gain(Modes.dev, Modes.gain);
-        fprintf(stderr, "Setting gain to: %.2f\n", Modes.gain/10.0);
+        fprintf(stderr, "Setting gain to: %.2f\n", Modes.gain / 10.0);
     } else {
         fprintf(stderr, "Using automatic gain control.\n");
     }
@@ -882,7 +892,7 @@ void modesInitRTLSDR(void) {
     rtlsdr_set_sample_rate(Modes.dev, MODES_DEFAULT_RATE);
     rtlsdr_reset_buffer(Modes.dev);
     fprintf(stderr, "Gain reported by device: %.2f\n",
-            rtlsdr_get_tuner_gain(Modes.dev)/10.0);
+            rtlsdr_get_tuner_gain(Modes.dev) / 10.0);
 }
 
 /* We use a thread reading data in background, while the main thread
@@ -898,9 +908,9 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
     if (len > MODES_DATA_LEN) len = MODES_DATA_LEN;
     /* Move the last part of the previous buffer, that was not processed,
      * on the start of the new buffer. */
-    memcpy(Modes.data, Modes.data+MODES_DATA_LEN, (MODES_FULL_LEN-1)*4);
+    memcpy(Modes.data, Modes.data + MODES_DATA_LEN, (MODES_FULL_LEN - 1) * 4);
     /* Read the new data. */
-    memcpy(Modes.data+(MODES_FULL_LEN-1)*4, buf, len);
+    memcpy(Modes.data + (MODES_FULL_LEN - 1) * 4, buf, len);
     Modes.data_ready = 1;
     /* Signal to the other thread that new data is ready */
     pthread_cond_signal(&Modes.data_cond);
@@ -911,12 +921,12 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
  * instead of using an RTLSDR device. */
 void readDataFromFile(void) {
     pthread_mutex_lock(&Modes.data_mutex);
-    while(1) {
+    while (1) {
         ssize_t nread, toread;
         unsigned char *p;
 
         if (Modes.data_ready) {
-            pthread_cond_wait(&Modes.data_cond,&Modes.data_mutex);
+            pthread_cond_wait(&Modes.data_cond, &Modes.data_mutex);
             continue;
         }
 
@@ -930,19 +940,18 @@ void readDataFromFile(void) {
 
         /* Move the last part of the previous buffer, that was not processed,
          * on the start of the new buffer. */
-        memcpy(Modes.data, Modes.data+MODES_DATA_LEN, (MODES_FULL_LEN-1)*4);
+        memcpy(Modes.data, Modes.data + MODES_DATA_LEN, (MODES_FULL_LEN - 1) * 4);
         toread = MODES_DATA_LEN;
-        p = Modes.data+(MODES_FULL_LEN-1)*4;
-        while(toread) {
+        p = Modes.data + (MODES_FULL_LEN - 1) * 4;
+        while (toread) {
             nread = read(Modes.fd, p, toread);
             /* In --file mode, seek the file again from the start
              * and re-play it if --loop was given. */
             if (nread == 0 &&
                 Modes.filename != NULL &&
                 Modes.fd != STDIN_FILENO &&
-                Modes.loop)
-            {
-                if (lseek(Modes.fd,0,SEEK_SET) != -1) continue;
+                Modes.loop) {
+                if (lseek(Modes.fd, 0, SEEK_SET) != -1) continue;
             }
 
             if (nread <= 0) {
@@ -955,7 +964,7 @@ void readDataFromFile(void) {
         if (toread) {
             /* Not enough data on file to fill the buffer? Pad with
              * no signal. */
-            memset(p,127,toread);
+            memset(p, 127, toread);
         }
         Modes.data_ready = 1;
         /* Signal to the other thread that new data is ready */
@@ -998,9 +1007,9 @@ void dumpMagnitudeBar(int index, int magnitude) {
     int div = magnitude / 256 / 4;
     int rem = magnitude / 256 % 4;
 
-    memset(buf,'O',div);
+    memset(buf, 'O', div);
     buf[div] = set[rem];
-    buf[div+1] = '\0';
+    buf[div + 1] = '\0';
 
     if (index >= 0) {
         int markchar = ']';
@@ -1009,7 +1018,7 @@ void dumpMagnitudeBar(int index, int magnitude) {
         if (index == 0 || index == 2 || index == 7 || index == 9)
             markchar = '>';
         /* Data peaks are marked to distinguish pairs of bits. */
-        if (index >= 16) markchar = ((index-16)/2 & 1) ? '|' : ')';
+        if (index >= 16) markchar = ((index - 16) / 2 & 1) ? '|' : ')';
         printf("[%.3d%c |%-66s %d\n", index, markchar, buf, magnitude);
     } else {
         printf("[%.2d] |%-66s %d\n", index, buf, magnitude);
@@ -1027,23 +1036,22 @@ void dumpMagnitudeBar(int index, int magnitude) {
 
 void dumpMagnitudeVector(uint16_t *m, uint32_t offset) {
     uint32_t padding = 5; /* Show a few samples before the actual start. */
-    uint32_t start = (offset < padding) ? 0 : offset-padding;
-    uint32_t end = offset + (MODES_PREAMBLE_US*2)+(MODES_SHORT_MSG_BITS*2) - 1;
+    uint32_t start = (offset < padding) ? 0 : offset - padding;
+    uint32_t end = offset + (MODES_PREAMBLE_US * 2) + (MODES_SHORT_MSG_BITS * 2) - 1;
     uint32_t j;
 
     for (j = start; j <= end; j++) {
-        dumpMagnitudeBar(j-offset, m[j]);
+        dumpMagnitudeBar(j - offset, m[j]);
     }
 }
 
 /* Produce a raw representation of the bitf_message as a Javascript file
  * loadable by debug.html. */
 void dumpRawMessageJS(char *descr, unsigned char *msg,
-                      uint16_t *m, uint32_t offset, int fixable)
-{
+                      uint16_t *m, uint32_t offset, int fixable) {
     int padding = 5; /* Show a few samples before the actual start. */
     int start = offset - padding;
-    int end = offset + (MODES_PREAMBLE_US*2)+(MODES_LONG_MSG_BITS*2) - 1;
+    int end = offset + (MODES_PREAMBLE_US * 2) + (MODES_LONG_MSG_BITS * 2) - 1;
     FILE *fp;
     int j, fix1 = -1, fix2 = -1;
 
@@ -1052,21 +1060,21 @@ void dumpRawMessageJS(char *descr, unsigned char *msg,
         if (fixable > 255) fix2 = fixable >> 8;
     }
 
-    if ((fp = fopen("frames.js","a")) == NULL) {
+    if ((fp = fopen("frames.js", "a")) == NULL) {
         fprintf(stderr, "Error opening frames.js: %s\n", strerror(errno));
         exit(1);
     }
 
-    fprintf(fp,"frames.push({\"descr\": \"%s\", \"mag\": [", descr);
+    fprintf(fp, "frames.push({\"descr\": \"%s\", \"mag\": [", descr);
     for (j = start; j <= end; j++) {
-        fprintf(fp,"%d", j < 0 ? 0 : m[j]);
-        if (j != end) fprintf(fp,",");
+        fprintf(fp, "%d", j < 0 ? 0 : m[j]);
+        if (j != end) fprintf(fp, ",");
     }
-    fprintf(fp,"], \"fix1\": %d, \"fix2\": %d, \"bits\": %d, \"hex\": \"",
-            fix1, fix2, modesMessageLenByType(msg[0]>>3));
+    fprintf(fp, "], \"fix1\": %d, \"fix2\": %d, \"bits\": %d, \"hex\": \"",
+            fix1, fix2, modesMessageLenByType(msg[0] >> 3));
     for (j = 0; j < MODES_LONG_MSG_BYTES; j++)
-        fprintf(fp,"\\x%02x",msg[j]);
-    fprintf(fp,"\"});\n");
+        fprintf(fp, "\\x%02x", msg[j]);
+    fprintf(fp, "\"});\n");
     fclose(fp);
 }
 
@@ -1083,19 +1091,18 @@ void dumpRawMessageJS(char *descr, unsigned char *msg,
  * enabled.
  */
 void dumpRawMessage(char *descr, unsigned char *msg,
-                    uint16_t *m, uint32_t offset)
-{
+                    uint16_t *m, uint32_t offset) {
 
     int j;
-    int msgtype = msg[0]>>3;
+    int msgtype = msg[0] >> 3;
     int fixable = -1;
 
     if (msgtype == 11 || msgtype == 17) {
         int msgbits = (msgtype == 11) ? MODES_SHORT_MSG_BITS :
                       MODES_LONG_MSG_BITS;
-        fixable = fixSingleBitErrors(msg,msgbits);
+        fixable = fixSingleBitErrors(msg, msgbits);
         if (fixable == -1)
-            fixable = fixTwoBitsErrors(msg,msgbits);
+            fixable = fixTwoBitsErrors(msg, msgbits);
     }
 
     if (Modes.debug & MODES_DEBUG_JS) {
@@ -1105,11 +1112,11 @@ void dumpRawMessage(char *descr, unsigned char *msg,
 
     printf("\n--- %s\n    ", descr);
     for (j = 0; j < MODES_LONG_MSG_BYTES; j++) {
-        printf("%02x",msg[j]);
-        if (j == MODES_SHORT_MSG_BYTES-1) printf(" ... ");
+        printf("%02x", msg[j]);
+        if (j == MODES_SHORT_MSG_BYTES - 1) printf(" ... ");
     }
     printf(" (DF %d, Fixable: %d)\n", msgtype, fixable);
-    dumpMagnitudeVector(m,offset);
+    dumpMagnitudeVector(m, offset);
     printf("---\n\n");
 }
 
@@ -1152,17 +1159,17 @@ uint32_t modes_checksum_table[112] = {
 
 uint32_t modesChecksum(unsigned char *msg, int bits) {
     uint32_t crc = 0;
-    int offset = (bits == 112) ? 0 : (112-56);
+    int offset = (bits == 112) ? 0 : (112 - 56);
     int j;
 
-    for(j = 0; j < bits; j++) {
-        int byte = j/8;
-        int bit = j%8;
-        int bitmask = 1 << (7-bit);
+    for (j = 0; j < bits; j++) {
+        int byte = j / 8;
+        int bit = j % 8;
+        int bitmask = 1 << (7 - bit);
 
         /* If bit is set, xor with corresponding table entry. */
         if (msg[byte] & bitmask)
-            crc ^= modes_checksum_table[j+offset];
+            crc ^= modes_checksum_table[j + offset];
     }
     return crc; /* 24 bit checksum. */
 }
@@ -1289,35 +1296,36 @@ int fixSingleBitErrors(unsigned char *msg, int bits) {
 }
 #endif
 #ifndef OPENCL
+
 int fixSingleBitErrors(unsigned char *msg, int bits) {
     int j;
-    unsigned char aux[MODES_LONG_MSG_BITS/8];
+    unsigned char aux[MODES_LONG_MSG_BITS / 8];
 
     for (j = 0; j < bits; j++) { // For each bit
-        int byte = j/8;
-        int bitmask = 1 << (7-(j%8)); // Grab the bit
+        int byte = j / 8;
+        int bitmask = 1 << (7 - (j % 8)); // Grab the bit
         uint32_t crc1, crc2;
 
-        memcpy(aux,msg,bits/8);
+        memcpy(aux, msg, bits / 8);
         aux[byte] ^= bitmask; /* Flip j-th bit. */
 
-        crc1 = ((uint32_t)aux[(bits/8)-3] << 16) |
-               ((uint32_t)aux[(bits/8)-2] << 8) |
-               (uint32_t)aux[(bits/8)-1];
-        crc2 = modesChecksum(aux,bits);
+        crc1 = ((uint32_t) aux[(bits / 8) - 3] << 16) |
+               ((uint32_t) aux[(bits / 8) - 2] << 8) |
+               (uint32_t) aux[(bits / 8) - 1];
+        crc2 = modesChecksum(aux, bits);
 
         if (crc1 == crc2) {
             /* The error is fixed. Overwrite the original buffer with
              * the corrected sequence, and returns the error bit
              * position. */
-            memcpy(msg,aux,bits/8);
+            memcpy(msg, aux, bits / 8);
             return j;
         }
     }
     return -1;
 }
-#endif
 
+#endif
 
 
 /* Similar to fixSingleBitErrors() but try every possible two bit combination.
@@ -1327,37 +1335,37 @@ int fixSingleBitErrors(unsigned char *msg, int bits) {
  * */
 int fixTwoBitsErrors(unsigned char *msg, int bits) {
     int j, i;
-    unsigned char aux[MODES_LONG_MSG_BITS/8];
+    unsigned char aux[MODES_LONG_MSG_BITS / 8];
 
     for (j = 0; j < bits; j++) {
-        int byte1 = j/8;
-        int bitmask1 = 1 << (7-(j%8));
+        int byte1 = j / 8;
+        int bitmask1 = 1 << (7 - (j % 8));
 
         /* Don't check the same pairs multiple times, so i starts from j+1 */
-        for (i = j+1; i < bits; i++) {
-            int byte2 = i/8;
-            int bitmask2 = 1 << (7-(i%8));
+        for (i = j + 1; i < bits; i++) {
+            int byte2 = i / 8;
+            int bitmask2 = 1 << (7 - (i % 8));
             uint32_t crc1, crc2;
 
-            memcpy(aux,msg,bits/8);
+            memcpy(aux, msg, bits / 8);
 
             aux[byte1] ^= bitmask1; /* Flip j-th bit. */
             aux[byte2] ^= bitmask2; /* Flip i-th bit. */
 
-            crc1 = ((uint32_t)aux[(bits/8)-3] << 16) |
-                   ((uint32_t)aux[(bits/8)-2] << 8) |
-                   (uint32_t)aux[(bits/8)-1];
-            crc2 = modesChecksum(aux,bits);
+            crc1 = ((uint32_t) aux[(bits / 8) - 3] << 16) |
+                   ((uint32_t) aux[(bits / 8) - 2] << 8) |
+                   (uint32_t) aux[(bits / 8) - 1];
+            crc2 = modesChecksum(aux, bits);
 
             if (crc1 == crc2) {
                 /* The error is fixed. Overwrite the original buffer with
                  * the corrected sequence, and returns the error bit
                  * position. */
-                memcpy(msg,aux,bits/8);
+                memcpy(msg, aux, bits / 8);
                 /* We return the two bits as a 16 bit integer by shifting
                  * 'i' on the left. This is possible since 'i' will always
                  * be non-zero because i starts from j+1. */
-                return j | (i<<8);
+                return j | (i << 8);
             }
         }
     }
@@ -1372,7 +1380,7 @@ uint32_t ICAOCacheHashAddress(uint32_t a) {
     a = ((a >> 16) ^ a) * 0x45d9f3b;
     a = ((a >> 16) ^ a) * 0x45d9f3b;
     a = ((a >> 16) ^ a);
-    return a & (MODES_ICAO_CACHE_LEN-1);
+    return a & (MODES_ICAO_CACHE_LEN - 1);
 }
 
 /* Add the specified entry to the cache of recently seen ICAO addresses.
@@ -1380,8 +1388,8 @@ uint32_t ICAOCacheHashAddress(uint32_t a) {
  * entry is only valid for MODES_ICAO_CACHE_TTL seconds. */
 void addRecentlySeenICAOAddr(uint32_t addr) {
     uint32_t h = ICAOCacheHashAddress(addr);
-    Modes.icao_cache[h*2] = addr;
-    Modes.icao_cache[h*2+1] = (uint32_t) time(NULL);
+    Modes.icao_cache[h * 2] = addr;
+    Modes.icao_cache[h * 2 + 1] = (uint32_t) time(NULL);
 }
 
 /* Returns 1 if the specified ICAO address was seen in a DF format with
@@ -1389,10 +1397,10 @@ void addRecentlySeenICAOAddr(uint32_t addr) {
  * seconds ago. Otherwise returns 0. */
 int ICAOAddressWasRecentlySeen(uint32_t addr) {
     uint32_t h = ICAOCacheHashAddress(addr);
-    uint32_t a = Modes.icao_cache[h*2];
-    uint32_t t = Modes.icao_cache[h*2+1];
+    uint32_t a = Modes.icao_cache[h * 2];
+    uint32_t t = Modes.icao_cache[h * 2 + 1];
 
-    return a && a == addr && time(NULL)-t <= MODES_ICAO_CACHE_TTL;
+    return a && a == addr && time(NULL) - t <= MODES_ICAO_CACHE_TTL;
 }
 
 /* If the bitf_message type has the checksum xored with the ICAO address, try to
@@ -1426,26 +1434,26 @@ int bruteForceAP(unsigned char *msg, struct modesMessage *mm) {
     {
         uint32_t addr;
         uint32_t crc;
-        int lastbyte = (msgbits/8)-1;
+        int lastbyte = (msgbits / 8) - 1;
 
         /* Work on a copy. */
-        memcpy(aux,msg,msgbits/8);
+        memcpy(aux, msg, msgbits / 8);
 
         /* Compute the CRC of the bitf_message and XOR it with the AP field
          * so that we recover the address, because:
          *
          * (ADDR xor CRC) xor CRC = ADDR. */
-        crc = modesChecksum(aux,msgbits);
+        crc = modesChecksum(aux, msgbits);
         aux[lastbyte] ^= crc & 0xff;
-        aux[lastbyte-1] ^= (crc >> 8) & 0xff;
-        aux[lastbyte-2] ^= (crc >> 16) & 0xff;
+        aux[lastbyte - 1] ^= (crc >> 8) & 0xff;
+        aux[lastbyte - 2] ^= (crc >> 16) & 0xff;
 
         /* If the obtained address exists in our cache we consider
          * the bitf_message valid. */
-        addr = aux[lastbyte] | (aux[lastbyte-1] << 8) | (aux[lastbyte-2] << 16);
+        addr = aux[lastbyte] | (aux[lastbyte - 1] << 8) | (aux[lastbyte - 2] << 16);
         if (ICAOAddressWasRecentlySeen(addr)) {
-            mm->aa1 = aux[lastbyte-2];
-            mm->aa2 = aux[lastbyte-1];
+            mm->aa1 = aux[lastbyte - 2];
+            mm->aa2 = aux[lastbyte - 1];
             mm->aa3 = aux[lastbyte];
             return 1;
         }
@@ -1457,21 +1465,21 @@ int bruteForceAP(unsigned char *msg, struct modesMessage *mm) {
  * Returns the altitude, and set 'unit' to either MODES_UNIT_METERS
  * or MDOES_UNIT_FEETS. */
 int decodeAC13Field(unsigned char *msg, int *unit) {
-    int m_bit = msg[3] & (1<<6);
-    int q_bit = msg[3] & (1<<4);
+    int m_bit = msg[3] & (1 << 6);
+    int q_bit = msg[3] & (1 << 4);
 
     if (!m_bit) {
         *unit = MODES_UNIT_FEET;
         if (q_bit) {
             /* N is the 11 bit integer resulting from the removal of bit
              * Q and M */
-            int n = ((msg[2]&31)<<6) |
-                    ((msg[3]&0x80)>>2) |
-                    ((msg[3]&0x20)>>1) |
-                    (msg[3]&15);
+            int n = ((msg[2] & 31) << 6) |
+                    ((msg[3] & 0x80) >> 2) |
+                    ((msg[3] & 0x20) >> 1) |
+                    (msg[3] & 15);
             /* The final altitude is due to the resulting number multiplied
              * by 25, minus 1000. */
-            return n*25-1000;
+            return n * 25 - 1000;
         } else {
             /* TODO: Implement altitude where Q=0 and M=0 */
         }
@@ -1491,10 +1499,10 @@ int decodeAC12Field(unsigned char *msg, int *unit) {
         /* N is the 11 bit integer resulting from the removal of bit
          * Q */
         *unit = MODES_UNIT_FEET;
-        int n = ((msg[5]>>1)<<4) | ((msg[6]&0xF0) >> 4);
+        int n = ((msg[5] >> 1) << 4) | ((msg[6] & 0xF0) >> 4);
         /* The final altitude is due to the resulting number multiplied
          * by 25, minus 1000. */
-        return n*25-1000;
+        return n * 25 - 1000;
     } else {
         return 0;
     }
@@ -1537,7 +1545,7 @@ char *getMEDescription(int metype, int mesub) {
         mename = "Surface Position";
     else if (metype >= 9 && metype <= 18)
         mename = "Airborne Position (Baro Altitude)";
-    else if (metype == 19 && mesub >=1 && mesub <= 4)
+    else if (metype == 19 && mesub >= 1 && mesub <= 4)
         mename = "Airborne Velocity";
     else if (metype >= 20 && metype <= 22)
         mename = "Airborne Position (GNSS Height)";
@@ -1564,18 +1572,18 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
     char *ais_charset = "?ABCDEFGHIJKLMNOPQRSTUVWXYZ????? ???????????????0123456789??????";
 
     /* Work on our local copy */
-    memcpy(mm->msg,msg,MODES_LONG_MSG_BYTES);
+    memcpy(mm->msg, msg, MODES_LONG_MSG_BYTES);
     msg = mm->msg;
 
     /* Get the bitf_message type ASAP as other operations depend on this */
-    mm->msgtype = msg[0]>>3;    /* Downlink Format */
+    mm->msgtype = msg[0] >> 3;    /* Downlink Format */
     mm->msgbits = modesMessageLenByType(mm->msgtype);
 
     /* CRC is always the last three bytes. */
-    mm->crc = ((uint32_t)msg[(mm->msgbits/8)-3] << 16) |
-              ((uint32_t)msg[(mm->msgbits/8)-2] << 8) |
-              (uint32_t)msg[(mm->msgbits/8)-1];
-    crc2 = modesChecksum(msg,mm->msgbits);
+    mm->crc = ((uint32_t) msg[(mm->msgbits / 8) - 3] << 16) |
+              ((uint32_t) msg[(mm->msgbits / 8) - 2] << 8) |
+              (uint32_t) msg[(mm->msgbits / 8) - 1];
+    crc2 = modesChecksum(msg, mm->msgbits);
 
     /* Check CRC and fix single bit errors using the CRC when
      * possible (DF 11 and 17). */
@@ -1583,18 +1591,16 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
     mm->crcok = (mm->crc == crc2);
 
     if (!mm->crcok && Modes.fix_errors &&
-        (mm->msgtype == 11 || mm->msgtype == 17))
-    {
-        if ((mm->errorbit = fixSingleBitErrors(msg,mm->msgbits)) != -1) {
-            if (mm->errorbit == -2){
+        (mm->msgtype == 11 || mm->msgtype == 17)) {
+        if ((mm->errorbit = fixSingleBitErrors(msg, mm->msgbits)) != -1) {
+            if (mm->errorbit == -2) {
                 exit(EXIT_FAILURE);
             }
-            mm->crc = modesChecksum(msg,mm->msgbits);
+            mm->crc = modesChecksum(msg, mm->msgbits);
             mm->crcok = 1;
         } else if (Modes.aggressive && mm->msgtype == 17 &&
-                   (mm->errorbit = fixTwoBitsErrors(msg,mm->msgbits)) != -1)
-        {
-            mm->crc = modesChecksum(msg,mm->msgbits);
+                   (mm->errorbit = fixTwoBitsErrors(msg, mm->msgbits)) != -1) {
+            mm->crc = modesChecksum(msg, mm->msgbits);
             mm->crcok = 1;
         }
     }
@@ -1616,8 +1622,8 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
     /* Fields for DF4,5,20,21 */
     mm->fs = msg[0] & 7;        /* Flight status for DF4,5,20,21 */
     mm->dr = msg[1] >> 3 & 31;  /* Request extraction of downlink request. */
-    mm->um = ((msg[1] & 7)<<3)| /* Request extraction of downlink request. */
-             msg[2]>>5;
+    mm->um = ((msg[1] & 7) << 3) | /* Request extraction of downlink request. */
+             msg[2] >> 5;
 
     /* In the squawk (identity) field bits are interleaved like that
      * (bitf_message bit 20 to bit 32):
@@ -1633,7 +1639,7 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
      *
      * For more info: http://en.wikipedia.org/wiki/Gillham_code */
     {
-        int a,b,c,d;
+        int a, b, c, d;
 
         a = ((msg[3] & 0x80) >> 5) |
             ((msg[2] & 0x02) >> 0) |
@@ -1647,7 +1653,7 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
         d = ((msg[3] & 0x01) << 2) |
             ((msg[3] & 0x04) >> 1) |
             ((msg[3] & 0x10) >> 4);
-        mm->identity = a*1000 + b*100 + c*10 + d;
+        mm->identity = a * 1000 + b * 100 + c * 10 + d;
     }
 
     /* DF 11 & 17: try to populate our ICAO addresses whitelist.
@@ -1656,7 +1662,7 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
         /* Check if we can check the checksum for the Downlink Formats where
          * the checksum is xored with the aircraft ICAO address. We try to
          * brute force it using a list of recently seen aircraft addresses. */
-        if (bruteForceAP(msg,mm)) {
+        if (bruteForceAP(msg, mm)) {
             /* We recovered the bitf_message, mark the checksum as valid. */
             mm->crcok = 1;
         } else {
@@ -1684,41 +1690,41 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
 
         if (mm->metype >= 1 && mm->metype <= 4) {
             /* Aircraft Identification and Category */
-            mm->aircraft_type = mm->metype-1;
-            mm->flight[0] = ais_charset[msg[5]>>2];
-            mm->flight[1] = ais_charset[((msg[5]&3)<<4)|(msg[6]>>4)];
-            mm->flight[2] = ais_charset[((msg[6]&15)<<2)|(msg[7]>>6)];
-            mm->flight[3] = ais_charset[msg[7]&63];
-            mm->flight[4] = ais_charset[msg[8]>>2];
-            mm->flight[5] = ais_charset[((msg[8]&3)<<4)|(msg[9]>>4)];
-            mm->flight[6] = ais_charset[((msg[9]&15)<<2)|(msg[10]>>6)];
-            mm->flight[7] = ais_charset[msg[10]&63];
+            mm->aircraft_type = mm->metype - 1;
+            mm->flight[0] = ais_charset[msg[5] >> 2];
+            mm->flight[1] = ais_charset[((msg[5] & 3) << 4) | (msg[6] >> 4)];
+            mm->flight[2] = ais_charset[((msg[6] & 15) << 2) | (msg[7] >> 6)];
+            mm->flight[3] = ais_charset[msg[7] & 63];
+            mm->flight[4] = ais_charset[msg[8] >> 2];
+            mm->flight[5] = ais_charset[((msg[8] & 3) << 4) | (msg[9] >> 4)];
+            mm->flight[6] = ais_charset[((msg[9] & 15) << 2) | (msg[10] >> 6)];
+            mm->flight[7] = ais_charset[msg[10] & 63];
             mm->flight[8] = '\0';
         } else if (mm->metype >= 9 && mm->metype <= 18) {
             /* Airborne position Message */
-            mm->fflag = msg[6] & (1<<2);
-            mm->tflag = msg[6] & (1<<3);
-            mm->altitude = decodeAC12Field(msg,&mm->unit);
+            mm->fflag = msg[6] & (1 << 2);
+            mm->tflag = msg[6] & (1 << 3);
+            mm->altitude = decodeAC12Field(msg, &mm->unit);
             mm->raw_latitude = ((msg[6] & 3) << 15) |
                                (msg[7] << 7) |
                                (msg[8] >> 1);
-            mm->raw_longitude = ((msg[8]&1) << 16) |
+            mm->raw_longitude = ((msg[8] & 1) << 16) |
                                 (msg[9] << 8) |
                                 msg[10];
         } else if (mm->metype == 19 && mm->mesub >= 1 && mm->mesub <= 4) {
             /* Airborne Velocity Message */
             if (mm->mesub == 1 || mm->mesub == 2) {
-                mm->ew_dir = (msg[5]&4) >> 2;
-                mm->ew_velocity = ((msg[5]&3) << 8) | msg[6];
-                mm->ns_dir = (msg[7]&0x80) >> 7;
-                mm->ns_velocity = ((msg[7]&0x7f) << 3) | ((msg[8]&0xe0) >> 5);
-                mm->vert_rate_source = (msg[8]&0x10) >> 4;
-                mm->vert_rate_sign = (msg[8]&0x8) >> 3;
-                mm->vert_rate = ((msg[8]&7) << 6) | ((msg[9]&0xfc) >> 2);
+                mm->ew_dir = (msg[5] & 4) >> 2;
+                mm->ew_velocity = ((msg[5] & 3) << 8) | msg[6];
+                mm->ns_dir = (msg[7] & 0x80) >> 7;
+                mm->ns_velocity = ((msg[7] & 0x7f) << 3) | ((msg[8] & 0xe0) >> 5);
+                mm->vert_rate_source = (msg[8] & 0x10) >> 4;
+                mm->vert_rate_sign = (msg[8] & 0x8) >> 3;
+                mm->vert_rate = ((msg[8] & 7) << 6) | ((msg[9] & 0xfc) >> 2);
                 /* Compute velocity and angle from the two speed
                  * components. */
-                mm->velocity = sqrt(mm->ns_velocity*mm->ns_velocity+
-                                    mm->ew_velocity*mm->ew_velocity);
+                mm->velocity = sqrt(mm->ns_velocity * mm->ns_velocity +
+                                    mm->ew_velocity * mm->ew_velocity);
                 if (mm->velocity) {
                     int ewv = mm->ew_velocity;
                     int nsv = mm->ns_velocity;
@@ -1726,19 +1732,19 @@ void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
 
                     if (mm->ew_dir) ewv *= -1;
                     if (mm->ns_dir) nsv *= -1;
-                    heading = atan2(ewv,nsv);
+                    heading = atan2(ewv, nsv);
 
                     /* Convert to degrees. */
-                    mm->heading = heading * 360 / (M_PI*2);
+                    mm->heading = heading * 360 / (M_PI * 2);
                     /* We don't want negative values but a 0-360 scale. */
                     if (mm->heading < 0) mm->heading += 360;
                 } else {
                     mm->heading = 0;
                 }
             } else if (mm->mesub == 3 || mm->mesub == 4) {
-                mm->heading_is_valid = msg[5] & (1<<2);
-                mm->heading = (360.0/128) * (((msg[5] & 3) << 5) |
-                                             (msg[6] >> 3));
+                mm->heading_is_valid = msg[5] & (1 << 2);
+                mm->heading = (360.0 / 128) * (((msg[5] & 3) << 5) |
+                                               (msg[6] >> 3));
             }
         }
     }
@@ -1758,7 +1764,7 @@ void displayModesMessage(struct modesMessage *mm) {
 
     /* Show the raw bitf_message. */
     printf("*");
-    for (j = 0; j < mm->msgbits/8; j++) printf("%02x", mm->msg[j]);
+    for (j = 0; j < mm->msgbits / 8; j++) printf("%02x", mm->msg[j]);
     printf(";\n");
 
     if (Modes.raw) {
@@ -1766,7 +1772,7 @@ void displayModesMessage(struct modesMessage *mm) {
         return; /* Enough for --raw mode */
     }
 
-    printf("CRC: %06x (%s)\n", (int)mm->crc, mm->crcok ? "ok" : "wrong");
+    printf("CRC: %06x (%s)\n", (int) mm->crc, mm->crcok ? "ok" : "wrong");
     if (mm->errorbit != -1)
         printf("Single bit error fixed, bit %d\n", mm->errorbit);
 
@@ -1814,7 +1820,7 @@ void displayModesMessage(struct modesMessage *mm) {
         printf("  Extended Squitter  Type: %d\n", mm->metype);
         printf("  Extended Squitter  Sub : %d\n", mm->mesub);
         printf("  Extended Squitter  Name: %s\n",
-               getMEDescription(mm->metype,mm->mesub));
+               getMEDescription(mm->metype, mm->mesub));
 
         /* Decode the extended squitter bitf_message. */
         if (mm->metype >= 1 && mm->metype <= 4) {
@@ -1870,12 +1876,12 @@ void computeMagnitudeVector(void) {
     /* Compute the magnitudo vector. It's just SQRT(I^2 + Q^2), but
      * we rescale to the 0-255 range to exploit the full resolution. */
     for (j = 0; j < Modes.data_len; j += 2) {
-        int i = p[j]-127;
-        int q = p[j+1]-127;
+        int i = p[j] - 127;
+        int q = p[j + 1] - 127;
 
         if (i < 0) i = -i;
         if (q < 0) q = -q;
-        m[j/2] = Modes.maglut[i*129+q];
+        m[j / 2] = Modes.maglut[i * 129 + q];
     }
 }
 
@@ -1886,10 +1892,10 @@ void computeMagnitudeVector(void) {
  * Note: this function will access m[-1], so the caller should make sure to
  * call it only if we are not at the start of the current buffer. */
 int detectOutOfPhase(uint16_t *m) {
-    if (m[3] > m[2]/3) return 1;
-    if (m[10] > m[9]/3) return 1;
-    if (m[6] > m[7]/3) return -1;
-    if (m[-1] > m[1]/3) return -1;
+    if (m[3] > m[2] / 3) return 1;
+    if (m[10] > m[9] / 3) return 1;
+    if (m[6] > m[7] / 3) return -1;
+    if (m[-1] > m[1] / 3) return -1;
     return 0;
 }
 
@@ -1925,13 +1931,13 @@ void applyPhaseCorrection(uint16_t *m) {
     int j;
 
     m += 16; /* Skip preamble. */
-    for (j = 0; j < (MODES_LONG_MSG_BITS-1)*2; j += 2) {
-        if (m[j] > m[j+1]) {
+    for (j = 0; j < (MODES_LONG_MSG_BITS - 1) * 2; j += 2) {
+        if (m[j] > m[j + 1]) {
             /* One */
-            m[j+2] = (m[j+2] * 5) / 4;
+            m[j + 2] = (m[j + 2] * 5) / 4;
         } else {
             /* Zero */
-            m[j+2] = (m[j+2] * 4) / 5;
+            m[j + 2] = (m[j + 2] * 4) / 5;
         }
     }
 }
@@ -1941,8 +1947,8 @@ void applyPhaseCorrection(uint16_t *m) {
  * stream of bits and passed to the function to display it. */
 void detectModeS(uint16_t *m, uint32_t mlen) {
     unsigned char bits[MODES_LONG_MSG_BITS];
-    unsigned char msg[MODES_LONG_MSG_BITS/2];
-    uint16_t aux[MODES_LONG_MSG_BITS*2];
+    unsigned char msg[MODES_LONG_MSG_BITS / 2];
+    uint16_t aux[MODES_LONG_MSG_BITS * 2];
     uint32_t j;
     int use_correction = 0;
 
@@ -1969,7 +1975,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
      * 8   --
      * 9   -------------------
      */
-    for (j = 0; j < mlen - MODES_FULL_LEN*2; j++) {
+    for (j = 0; j < mlen - MODES_FULL_LEN * 2; j++) {
         int low, high, delta, i, errors;
         int good_message = 0;
 
@@ -1978,17 +1984,16 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         /* First check of relations between the first 10 samples
          * representing a valid preamble. We don't even investigate further
          * if this simple test is not passed. */
-        if (!(m[j] > m[j+1] &&
-              m[j+1] < m[j+2] &&
-              m[j+2] > m[j+3] &&
-              m[j+3] < m[j] &&
-              m[j+4] < m[j] &&
-              m[j+5] < m[j] &&
-              m[j+6] < m[j] &&
-              m[j+7] > m[j+8] &&
-              m[j+8] < m[j+9] &&
-              m[j+9] > m[j+6]))
-        {
+        if (!(m[j] > m[j + 1] &&
+              m[j + 1] < m[j + 2] &&
+              m[j + 2] > m[j + 3] &&
+              m[j + 3] < m[j] &&
+              m[j + 4] < m[j] &&
+              m[j + 5] < m[j] &&
+              m[j + 6] < m[j] &&
+              m[j + 7] > m[j + 8] &&
+              m[j + 8] < m[j + 9] &&
+              m[j + 9] > m[j + 6])) {
             if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
                 m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
                 dumpRawMessage("Unexpected ratio among first 10 samples",
@@ -2000,10 +2005,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
          * of the high spikes level. We don't test bits too near to
          * the high levels as signals can be out of phase so part of the
          * energy can be in the near samples. */
-        high = (m[j]+m[j+2]+m[j+7]+m[j+9])/6;
-        if (m[j+4] >= high ||
-            m[j+5] >= high)
-        {
+        high = (m[j] + m[j + 2] + m[j + 7] + m[j + 9]) / 6;
+        if (m[j + 4] >= high ||
+            m[j + 5] >= high) {
             if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
                 m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
                 dumpRawMessage(
@@ -2015,11 +2019,10 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         /* Similarly samples in the range 11-14 must be low, as it is the
          * space between the preamble and real data. Again we don't test
          * bits too near to high levels, see above. */
-        if (m[j+11] >= high ||
-            m[j+12] >= high ||
-            m[j+13] >= high ||
-            m[j+14] >= high)
-        {
+        if (m[j + 11] >= high ||
+            m[j + 12] >= high ||
+            m[j + 13] >= high ||
+            m[j + 14] >= high) {
             if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
                 m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
                 dumpRawMessage(
@@ -2033,9 +2036,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         /* If the previous attempt with this bitf_message failed, retry using
          * magnitude correction. */
         if (use_correction) {
-            memcpy(aux,m+j+MODES_PREAMBLE_US*2,sizeof(aux));
-            if (j && detectOutOfPhase(m+j)) {
-                applyPhaseCorrection(m+j);
+            memcpy(aux, m + j + MODES_PREAMBLE_US * 2, sizeof(aux));
+            if (j && detectOutOfPhase(m + j)) {
+                applyPhaseCorrection(m + j);
                 Modes.stat_out_of_phase++;
             }
             /* TODO ... apply other kind of corrections. */
@@ -2044,61 +2047,61 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         /* Decode all the next 112 bits, regardless of the actual bitf_message
          * size. We'll check the actual bitf_message type later. */
         errors = 0;
-        for (i = 0; i < MODES_LONG_MSG_BITS*2; i += 2) {
-            low = m[j+i+MODES_PREAMBLE_US*2];
-            high = m[j+i+MODES_PREAMBLE_US*2+1];
-            delta = low-high;
+        for (i = 0; i < MODES_LONG_MSG_BITS * 2; i += 2) {
+            low = m[j + i + MODES_PREAMBLE_US * 2];
+            high = m[j + i + MODES_PREAMBLE_US * 2 + 1];
+            delta = low - high;
             if (delta < 0) delta = -delta;
 
             if (i > 0 && delta < 256) {
-                bits[i/2] = bits[i/2-1];
+                bits[i / 2] = bits[i / 2 - 1];
             } else if (low == high) {
                 /* Checking if two adiacent samples have the same magnitude
                  * is an effective way to detect if it's just random noise
                  * that was detected as a valid preamble. */
-                bits[i/2] = 2; /* error */
-                if (i < MODES_SHORT_MSG_BITS*2) errors++;
+                bits[i / 2] = 2; /* error */
+                if (i < MODES_SHORT_MSG_BITS * 2) errors++;
             } else if (low > high) {
-                bits[i/2] = 1;
+                bits[i / 2] = 1;
             } else {
                 /* (low < high) for exclusion  */
-                bits[i/2] = 0;
+                bits[i / 2] = 0;
             }
         }
 
         /* Restore the original bitf_message if we used magnitude correction. */
         if (use_correction)
-            memcpy(m+j+MODES_PREAMBLE_US*2,aux,sizeof(aux));
+            memcpy(m + j + MODES_PREAMBLE_US * 2, aux, sizeof(aux));
 
         /* Pack bits into bytes */
         for (i = 0; i < MODES_LONG_MSG_BITS; i += 8) {
-            msg[i/8] =
-                    bits[i]<<7 |
-                    bits[i+1]<<6 |
-                    bits[i+2]<<5 |
-                    bits[i+3]<<4 |
-                    bits[i+4]<<3 |
-                    bits[i+5]<<2 |
-                    bits[i+6]<<1 |
-                    bits[i+7];
+            msg[i / 8] =
+                    bits[i] << 7 |
+                    bits[i + 1] << 6 |
+                    bits[i + 2] << 5 |
+                    bits[i + 3] << 4 |
+                    bits[i + 4] << 3 |
+                    bits[i + 5] << 2 |
+                    bits[i + 6] << 1 |
+                    bits[i + 7];
         }
 
-        int msgtype = msg[0]>>3;
-        int msglen = modesMessageLenByType(msgtype)/8;
+        int msgtype = msg[0] >> 3;
+        int msglen = modesMessageLenByType(msgtype) / 8;
 
         /* Last check, high and low bits are different enough in magnitude
          * to mark this as real bitf_message and not just noise? */
         delta = 0;
-        for (i = 0; i < msglen*8*2; i += 2) {
-            delta += abs(m[j+i+MODES_PREAMBLE_US*2]-
-                         m[j+i+MODES_PREAMBLE_US*2+1]);
+        for (i = 0; i < msglen * 8 * 2; i += 2) {
+            delta += abs(m[j + i + MODES_PREAMBLE_US * 2] -
+                         m[j + i + MODES_PREAMBLE_US * 2 + 1]);
         }
-        delta /= msglen*4;
+        delta /= msglen * 4;
 
         /* Filter for an average delta of three is small enough to let almost
          * every kind of bitf_message to pass, but high enough to filter some
          * random noise. */
-        if (delta < 10*255) {
+        if (delta < 10 * 255) {
             use_correction = 0;
             continue;
         }
@@ -2110,7 +2113,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
             struct modesMessage mm;
 
             /* Decode the received bitf_message and update statistics */
-            decodeModesMessage(&mm,msg);
+            decodeModesMessage(&mm, msg);
 
             /* Update statistics. */
             if (mm.crcok || use_correction) {
@@ -2145,7 +2148,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
 
             /* Skip this bitf_message if we are sure it's fine. */
             if (mm.crcok) {
-                j += (MODES_PREAMBLE_US+(msglen*8))*2;
+                j += (MODES_PREAMBLE_US + (msglen * 8)) * 2;
                 good_message = 1;
                 if (use_correction)
                     mm.phase_corrected = 1;
@@ -2205,7 +2208,7 @@ struct aircraft *interactiveCreateAircraft(uint32_t addr) {
     struct aircraft *a = malloc(sizeof(*a));
 
     a->addr = addr;
-    snprintf(a->hexaddr,sizeof(a->hexaddr),"%06x",(int)addr);
+    snprintf(a->hexaddr, sizeof(a->hexaddr), "%06x", (int) addr);
     a->flight[0] = '\0';
     a->altitude = 0;
     a->speed = 0;
@@ -2229,7 +2232,7 @@ struct aircraft *interactiveCreateAircraft(uint32_t addr) {
 struct aircraft *interactiveFindAircraft(uint32_t addr) {
     struct aircraft *a = Modes.aircrafts;
 
-    while(a) {
+    while (a) {
         if (a->addr == addr) return a;
         a = a->next;
     }
@@ -2336,9 +2339,9 @@ void decodeCPR(struct aircraft *a) {
     double lon1 = a->odd_cprlon;
 
     /* Compute the Latitude Index "j" */
-    int j = floor(((59*lat0 - 60*lat1) / 131072) + 0.5);
-    double rlat0 = AirDlat0 * (cprModFunction(j,60) + lat0 / 131072);
-    double rlat1 = AirDlat1 * (cprModFunction(j,59) + lat1 / 131072);
+    int j = floor(((59 * lat0 - 60 * lat1) / 131072) + 0.5);
+    double rlat0 = AirDlat0 * (cprModFunction(j, 60) + lat0 / 131072);
+    double rlat1 = AirDlat1 * (cprModFunction(j, 59) + lat1 / 131072);
 
     if (rlat0 >= 270) rlat0 -= 360;
     if (rlat1 >= 270) rlat1 -= 360;
@@ -2349,17 +2352,17 @@ void decodeCPR(struct aircraft *a) {
     /* Compute ni and the longitude index m */
     if (a->even_cprtime > a->odd_cprtime) {
         /* Use even packet. */
-        int ni = cprNFunction(rlat0,0);
-        int m = floor((((lon0 * (cprNLFunction(rlat0)-1)) -
+        int ni = cprNFunction(rlat0, 0);
+        int m = floor((((lon0 * (cprNLFunction(rlat0) - 1)) -
                         (lon1 * cprNLFunction(rlat0))) / 131072) + 0.5);
-        a->lon = cprDlonFunction(rlat0,0) * (cprModFunction(m,ni)+lon0/131072);
+        a->lon = cprDlonFunction(rlat0, 0) * (cprModFunction(m, ni) + lon0 / 131072);
         a->lat = rlat0;
     } else {
         /* Use odd packet. */
-        int ni = cprNFunction(rlat1,1);
-        int m = floor((((lon0 * (cprNLFunction(rlat1)-1)) -
+        int ni = cprNFunction(rlat1, 1);
+        int m = floor((((lon0 * (cprNLFunction(rlat1) - 1)) -
                         (lon1 * cprNLFunction(rlat1))) / 131072.0) + 0.5);
-        a->lon = cprDlonFunction(rlat1,1) * (cprModFunction(m,ni)+lon1/131072);
+        a->lon = cprDlonFunction(rlat1, 1) * (cprModFunction(m, ni) + lon1 / 131072);
         a->lat = rlat1;
     }
     if (a->lon > 180) a->lon -= 360;
@@ -2389,7 +2392,7 @@ struct aircraft *interactiveReceiveData(struct modesMessage *mm) {
          * useless shuffle of positions on the screen. */
         if (0 && Modes.aircrafts != a && (time(NULL) - a->seen) >= 1) {
             aux = Modes.aircrafts;
-            while(aux->next != a) aux = aux->next;
+            while (aux->next != a) aux = aux->next;
             /* Now we are a node before the aircraft to remove. */
             aux->next = aux->next->next; /* removed. */
             /* Add on head */
@@ -2439,8 +2442,8 @@ void interactiveShowData(void) {
     char progress[4];
     int count = 0;
 
-    memset(progress,' ',3);
-    progress[time(NULL)%3] = '.';
+    memset(progress, ' ', 3);
+    progress[time(NULL) % 3] = '.';
     progress[3] = '\0';
 
     printf("\x1b[H\x1b[2J");    /* Clear the screen */
@@ -2449,7 +2452,7 @@ void interactiveShowData(void) {
             "--------------------------------------------------------------------------------\n",
             progress);
 
-    while(a && count < Modes.interactive_rows) {
+    while (a && count < Modes.interactive_rows) {
         int altitude = a->altitude, speed = a->speed;
 
         /* Convert units to metric if --metric was specified. */
@@ -2461,7 +2464,7 @@ void interactiveShowData(void) {
         printf("%-6s %-8s %-9d %-7d %-7.03f   %-7.03f   %-3d   %-9ld %d sec\n",
                a->hexaddr, a->flight, altitude, speed,
                a->lat, a->lon, a->track, a->messages,
-               (int)(now - a->seen));
+               (int) (now - a->seen));
         a = a->next;
         count++;
     }
@@ -2474,7 +2477,7 @@ void interactiveRemoveStaleAircrafts(void) {
     struct aircraft *prev = NULL;
     time_t now = time(NULL);
 
-    while(a) {
+    while (a) {
         if ((now - a->seen) > Modes.interactive_ttl) {
             struct aircraft *next = a->next;
             /* Remove the element from the linked list, with care
@@ -2501,9 +2504,9 @@ void snipMode(int level) {
     long long c = 0;
 
     while ((i = getchar()) != EOF && (q = getchar()) != EOF) {
-        if (abs(i-127) < level && abs(q-127) < level) {
+        if (abs(i - 127) < level && abs(q - 127) < level) {
             c++;
-            if (c > MODES_PREAMBLE_US*4) continue;
+            if (c > MODES_PREAMBLE_US * 4) continue;
         } else {
             c = 0;
         }
@@ -2534,9 +2537,9 @@ struct {
     int *socket;
     int port;
 } modesNetServices[MODES_NET_SERVICES_NUM] = {
-        {"Raw TCP bitf_output", &Modes.ros, MODES_NET_OUTPUT_RAW_PORT},
-        {"Raw TCP input", &Modes.ris, MODES_NET_INPUT_RAW_PORT},
-        {"HTTP server", &Modes.https, MODES_NET_HTTP_PORT},
+        {"Raw TCP bitf_output",         &Modes.ros,   MODES_NET_OUTPUT_RAW_PORT},
+        {"Raw TCP input",               &Modes.ris,   MODES_NET_INPUT_RAW_PORT},
+        {"HTTP server",                 &Modes.https, MODES_NET_HTTP_PORT},
         {"Basestation TCP bitf_output", &Modes.sbsos, MODES_NET_OUTPUT_SBS_PORT}
 };
 
@@ -2544,7 +2547,7 @@ struct {
 void modesInitNet(void) {
     int j;
 
-    memset(Modes.clients,0,sizeof(Modes.clients));
+    memset(Modes.clients, 0, sizeof(Modes.clients));
     Modes.maxfd = -1;
 
     for (j = 0; j < MODES_NET_SERVICES_NUM; j++) {
@@ -2592,7 +2595,7 @@ void modesAcceptClients(void) {
         c->fd = fd;
         c->buflen = 0;
         Modes.clients[fd] = c;
-        anetSetSendBuffer(Modes.aneterr,fd,MODES_NET_SNDBUF_SIZE);
+        anetSetSendBuffer(Modes.aneterr, fd, MODES_NET_SNDBUF_SIZE);
 
         if (Modes.maxfd < fd) Modes.maxfd = fd;
         if (*modesNetServices[j].socket == Modes.sbsos)
@@ -2621,7 +2624,7 @@ void modesFreeClient(int fd) {
         int j;
 
         Modes.maxfd = -1;
-        for (j = fd-1; j >= 0; j--) {
+        for (j = fd - 1; j >= 0; j--) {
             if (Modes.clients[j]) {
                 Modes.maxfd = j;
                 break;
@@ -2652,13 +2655,13 @@ void modesSendRawOutput(struct modesMessage *mm) {
     int j;
 
     *p++ = '*';
-    for (j = 0; j < mm->msgbits/8; j++) {
+    for (j = 0; j < mm->msgbits / 8; j++) {
         sprintf(p, "%02X", mm->msg[j]);
         p += 2;
     }
     *p++ = ';';
     *p++ = '\n';
-    modesSendAllClients(Modes.ros, msg, p-msg);
+    modesSendAllClients(Modes.ros, msg, p - msg);
 }
 
 
@@ -2671,7 +2674,8 @@ void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a) {
         /* Node: identity is calculated/kept in base10 but is actually
          * octal (07500 is represented as 7500) */
         if (mm->identity == 7500 || mm->identity == 7600 ||
-            mm->identity == 7700) emergency = -1;
+            mm->identity == 7700)
+            emergency = -1;
         if (mm->fs == 1 || mm->fs == 3) ground = -1;
         if (mm->fs == 2 || mm->fs == 3 || mm->fs == 4) alert = -1;
         if (mm->fs == 4 || mm->fs == 5) spi = -1;
@@ -2701,7 +2705,7 @@ void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a) {
                             "0,0,0,0",
                          mm->aa1, mm->aa2, mm->aa3, mm->altitude, a->lat, a->lon);
     } else if (mm->msgtype == 17 && mm->metype == 19 && mm->mesub == 1) {
-        int vr = (mm->vert_rate_sign==0?1:-1) * (mm->vert_rate-1) * 64;
+        int vr = (mm->vert_rate_sign == 0 ? 1 : -1) * (mm->vert_rate - 1) * 64;
 
         p += sprintf(p, "MSG,4,,,%02X%02X%02X,,,,,,,,%d,%d,,,%i,,0,0,0,0",
                      mm->aa1, mm->aa2, mm->aa3, a->speed, a->track, vr);
@@ -2713,15 +2717,15 @@ void modesSendSBSOutput(struct modesMessage *mm, struct aircraft *a) {
     }
 
     *p++ = '\n';
-    modesSendAllClients(Modes.sbsos, msg, p-msg);
+    modesSendAllClients(Modes.sbsos, msg, p - msg);
 }
 
 /* Turn an hex digit into its 4 bit decimal value.
  * Returns -1 if the digit is not in the 0-F range. */
 int hexDigitVal(int c) {
     c = tolower(c);
-    if (c >= '0' && c <= '9') return c-'0';
-    else if (c >= 'a' && c <= 'f') return c-'a'+10;
+    if (c >= '0' && c <= '9') return c - '0';
+    else if (c >= 'a' && c <= 'f') return c - 'a' + 10;
     else return -1;
 }
 
@@ -2745,27 +2749,28 @@ int decodeHexMessage(struct client *c) {
     struct modesMessage mm;
 
     /* Remove spaces on the left and on the right. */
-    while(l && isspace(hex[l-1])) {
-        hex[l-1] = '\0';
+    while (l && isspace(hex[l - 1])) {
+        hex[l - 1] = '\0';
         l--;
     }
-    while(isspace(*hex)) {
+    while (isspace(*hex)) {
         hex++;
         l--;
     }
 
     /* Turn the bitf_message into binary. */
-    if (l < 2 || hex[0] != '*' || hex[l-1] != ';') return 0;
-    hex++; l-=2; /* Skip * and ; */
-    if (l > MODES_LONG_MSG_BYTES*2) return 0; /* Too long bitf_message... broken. */
+    if (l < 2 || hex[0] != '*' || hex[l - 1] != ';') return 0;
+    hex++;
+    l -= 2; /* Skip * and ; */
+    if (l > MODES_LONG_MSG_BYTES * 2) return 0; /* Too long bitf_message... broken. */
     for (j = 0; j < l; j += 2) {
         int high = hexDigitVal(hex[j]);
-        int low = hexDigitVal(hex[j+1]);
+        int low = hexDigitVal(hex[j + 1]);
 
         if (high == -1 || low == -1) return 0;
-        msg[j/2] = (high<<4) | low;
+        msg[j / 2] = (high << 4) | low;
     }
-    decodeModesMessage(&mm,msg);
+    decodeModesMessage(&mm, msg);
     useModesMessage(&mm);
     return 0;
 }
@@ -2777,9 +2782,10 @@ char *aircraftsToJson(int *len) {
     char *buf = malloc(buflen), *p = buf;
     int l;
 
-    l = snprintf(p,buflen,"[\n");
-    p += l; buflen -= l;
-    while(a) {
+    l = snprintf(p, buflen, "[\n");
+    p += l;
+    buflen -= l;
+    while (a) {
         int altitude = a->altitude, speed = a->speed;
 
         /* Convert units to metric if --metric was specified. */
@@ -2789,33 +2795,35 @@ char *aircraftsToJson(int *len) {
         }
 
         if (a->lat != 0 && a->lon != 0) {
-            l = snprintf(p,buflen,
+            l = snprintf(p, buflen,
                          "{\"hex\":\"%s\", \"flight\":\"%s\", \"lat\":%f, "
                          "\"lon\":%f, \"altitude\":%d, \"track\":%d, "
                          "\"speed\":%d},\n",
                          a->hexaddr, a->flight, a->lat, a->lon, a->altitude, a->track,
                          a->speed);
-            p += l; buflen -= l;
+            p += l;
+            buflen -= l;
             /* Resize if needed. */
             if (buflen < 256) {
-                int used = p-buf;
+                int used = p - buf;
                 buflen += 1024; /* Our increment. */
-                buf = realloc(buf,used+buflen);
-                p = buf+used;
+                buf = realloc(buf, used + buflen);
+                p = buf + used;
             }
         }
         a = a->next;
     }
     /* Remove the final comma if any, and closes the json array. */
-    if (*(p-2) == ',') {
-        *(p-2) = '\n';
+    if (*(p - 2) == ',') {
+        *(p - 2) = '\n';
         p--;
         buflen++;
     }
-    l = snprintf(p,buflen,"]\n");
-    p += l; buflen -= l;
+    l = snprintf(p, buflen, "]\n");
+    p += l;
+    buflen -= l;
 
-    *len = p-buf;
+    *len = p - buf;
     return buf;
 }
 
@@ -2849,7 +2857,7 @@ int handleHTTPRequest(struct client *c) {
     }
 
     /* Identify he URL. */
-    p = strchr(c->buf,' ');
+    p = strchr(c->buf, ' ');
     if (!p) return 1; /* There should be the method and a space... */
     url = ++p; /* Now this should point to the requested URL. */
     p = strchr(p, ' ');
@@ -2871,19 +2879,18 @@ int handleHTTPRequest(struct client *c) {
         struct stat sbuf;
         int fd = -1;
 
-        if (stat(Modes.html_file,&sbuf) != -1 &&
-            (fd = open(Modes.html_file,O_RDONLY)) != -1)
-        {
+        if (stat(Modes.html_file, &sbuf) != -1 &&
+            (fd = open(Modes.html_file, O_RDONLY)) != -1) {
             content = malloc(sbuf.st_size);
-            if (read(fd,content,sbuf.st_size) == -1) {
-                snprintf(content,sbuf.st_size,"Error reading from file: %s",
+            if (read(fd, content, sbuf.st_size) == -1) {
+                snprintf(content, sbuf.st_size, "Error reading from file: %s",
                          strerror(errno));
             }
             clen = sbuf.st_size;
         } else {
             char buf[128];
 
-            clen = snprintf(buf,sizeof(buf),"Error opening HTML file: %s",
+            clen = snprintf(buf, sizeof(buf), "Error opening HTML file: %s",
                             strerror(errno));
             content = strdup(buf);
         }
@@ -2909,8 +2916,7 @@ int handleHTTPRequest(struct client *c) {
 
     /* Send header and content. */
     if (write(c->fd, hdr, hdrlen) != hdrlen ||
-        write(c->fd, content, clen) != clen)
-    {
+        write(c->fd, content, clen) != clen) {
         free(content);
         return 1;
     }
@@ -2932,11 +2938,10 @@ int handleHTTPRequest(struct client *c) {
  * should close the connection with the client in case of non-recoverable
  * errors. */
 void modesReadFromClient(struct client *c, char *sep,
-                         int(*handler)(struct client *))
-{
-    while(1) {
+                         int(*handler)(struct client *)) {
+    while (1) {
         int left = MODES_CLIENT_BUF_SIZE - c->buflen;
-        int nread = read(c->fd, c->buf+c->buflen, left);
+        int nread = read(c->fd, c->buf + c->buflen, left);
         int fullmsg = 0;
         int i;
         char *p;
@@ -2967,7 +2972,7 @@ void modesReadFromClient(struct client *c, char *sep,
             }
             /* Move what's left at the start of the buffer. */
             i += strlen(sep); /* The separator is part of the previous msg. */
-            memmove(c->buf,c->buf+i,c->buflen-i);
+            memmove(c->buf, c->buf + i, c->buflen - i);
             c->buflen -= i;
             c->buf[c->buflen] = '\0';
             /* Maybe there are more messages inside the buffer.
@@ -2996,9 +3001,9 @@ void modesReadFromClients(void) {
     for (j = 0; j <= Modes.maxfd; j++) {
         if ((c = Modes.clients[j]) == NULL) continue;
         if (c->service == Modes.ris)
-            modesReadFromClient(c,"\n",decodeHexMessage);
+            modesReadFromClient(c, "\n", decodeHexMessage);
         else if (c->service == Modes.https)
-            modesReadFromClient(c,"\r\n\r\n",handleHTTPRequest);
+            modesReadFromClient(c, "\r\n\r\n", handleHTTPRequest);
     }
 }
 
@@ -3018,21 +3023,21 @@ void modesWaitReadableClients(int timeout_ms) {
 
     /* Set client FDs */
     for (j = 0; j <= Modes.maxfd; j++) {
-        if (Modes.clients[j]) FD_SET(j,&fds);
+        if (Modes.clients[j]) FD_SET(j, &fds);
     }
 
     /* Set listening sockets to accept new clients ASAP. */
     for (j = 0; j < MODES_NET_SERVICES_NUM; j++) {
         int s = *modesNetServices[j].socket;
-        FD_SET(s,&fds);
+        FD_SET(s, &fds);
         if (s > maxfd) maxfd = s;
     }
 
-    tv.tv_sec = timeout_ms/1000;
-    tv.tv_usec = (timeout_ms%1000)*1000;
+    tv.tv_sec = timeout_ms / 1000;
+    tv.tv_usec = (timeout_ms % 1000) * 1000;
     /* We don't care why select returned here, timeout, error, or
      * FDs ready are all conditions for which we just return. */
-    select(maxfd+1,&fds,NULL,NULL,&tv);
+    select(maxfd + 1, &fds, NULL, NULL, &tv);
 }
 
 /* ============================ Terminal handling  ========================== */
@@ -3106,8 +3111,7 @@ void backgroundTasks(void) {
     /* Refresh screen when in interactive mode. */
     if (Modes.interactive &&
         (mstime() - Modes.interactive_last_update) >
-        MODES_INTERACTIVE_REFRESH_TIME)
-    {
+        MODES_INTERACTIVE_REFRESH_TIME) {
         interactiveRemoveStaleAircrafts();
         interactiveShowData();
         Modes.interactive_last_update = mstime();
@@ -3122,62 +3126,76 @@ int main(int argc, char **argv) {
 
     /* Parse the command line options */
     for (j = 1; j < argc; j++) {
-        int more = j+1 < argc; /* There are more arguments. */
+        int more = j + 1 < argc; /* There are more arguments. */
 
-        if (!strcmp(argv[j],"--device-index") && more) {
+        if (!strcmp(argv[j], "--device-index") && more) {
             Modes.dev_index = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--gain") && more) {
-            Modes.gain = atof(argv[++j])*10; /* Gain is in tens of DBs */
-        } else if (!strcmp(argv[j],"--enable-agc")) {
+        } else if (!strcmp(argv[j], "--gain") && more) {
+            Modes.gain = atof(argv[++j]) * 10; /* Gain is in tens of DBs */
+        } else if (!strcmp(argv[j], "--enable-agc")) {
             Modes.enable_agc++;
-        } else if (!strcmp(argv[j],"--freq") && more) {
-            Modes.freq = strtoll(argv[++j],NULL,10);
-        } else if (!strcmp(argv[j],"--ifile") && more) {
+        } else if (!strcmp(argv[j], "--freq") && more) {
+            Modes.freq = strtoll(argv[++j], NULL, 10);
+        } else if (!strcmp(argv[j], "--ifile") && more) {
             Modes.filename = strdup(argv[++j]);
-        } else if (!strcmp(argv[j],"--loop")) {
+        } else if (!strcmp(argv[j], "--loop")) {
             Modes.loop = 1;
-        } else if (!strcmp(argv[j],"--no-fix")) {
+        } else if (!strcmp(argv[j], "--no-fix")) {
             Modes.fix_errors = 0;
-        } else if (!strcmp(argv[j],"--no-crc-check")) {
+        } else if (!strcmp(argv[j], "--no-crc-check")) {
             Modes.check_crc = 0;
-        } else if (!strcmp(argv[j],"--raw")) {
+        } else if (!strcmp(argv[j], "--raw")) {
             Modes.raw = 1;
-        } else if (!strcmp(argv[j],"--net")) {
+        } else if (!strcmp(argv[j], "--net")) {
             Modes.net = 1;
-        } else if (!strcmp(argv[j],"--net-only")) {
+        } else if (!strcmp(argv[j], "--net-only")) {
             Modes.net = 1;
             Modes.net_only = 1;
-        } else if (!strcmp(argv[j],"--net-ro-port") && more) {
+        } else if (!strcmp(argv[j], "--net-ro-port") && more) {
             modesNetServices[MODES_NET_SERVICE_RAWO].port = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--net-ri-port") && more) {
+        } else if (!strcmp(argv[j], "--net-ri-port") && more) {
             modesNetServices[MODES_NET_SERVICE_RAWI].port = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--net-http-port") && more) {
+        } else if (!strcmp(argv[j], "--net-http-port") && more) {
             modesNetServices[MODES_NET_SERVICE_HTTP].port = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--net-sbs-port") && more) {
+        } else if (!strcmp(argv[j], "--net-sbs-port") && more) {
             modesNetServices[MODES_NET_SERVICE_SBS].port = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--onlyaddr")) {
+        } else if (!strcmp(argv[j], "--onlyaddr")) {
             Modes.onlyaddr = 1;
-        } else if (!strcmp(argv[j],"--metric")) {
+        } else if (!strcmp(argv[j], "--metric")) {
             Modes.metric = 1;
-        } else if (!strcmp(argv[j],"--aggressive")) {
+        } else if (!strcmp(argv[j], "--aggressive")) {
             Modes.aggressive++;
-        } else if (!strcmp(argv[j],"--interactive")) {
+        } else if (!strcmp(argv[j], "--interactive")) {
             Modes.interactive = 1;
-        } else if (!strcmp(argv[j],"--interactive-rows")) {
+        } else if (!strcmp(argv[j], "--interactive-rows")) {
             Modes.interactive_rows = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--interactive-ttl")) {
+        } else if (!strcmp(argv[j], "--interactive-ttl")) {
             Modes.interactive_ttl = atoi(argv[++j]);
-        } else if (!strcmp(argv[j],"--debug") && more) {
+        } else if (!strcmp(argv[j], "--debug") && more) {
             char *f = argv[++j];
-            while(*f) {
-                switch(*f) {
-                    case 'D': Modes.debug |= MODES_DEBUG_DEMOD; break;
-                    case 'd': Modes.debug |= MODES_DEBUG_DEMODERR; break;
-                    case 'C': Modes.debug |= MODES_DEBUG_GOODCRC; break;
-                    case 'c': Modes.debug |= MODES_DEBUG_BADCRC; break;
-                    case 'p': Modes.debug |= MODES_DEBUG_NOPREAMBLE; break;
-                    case 'n': Modes.debug |= MODES_DEBUG_NET; break;
-                    case 'j': Modes.debug |= MODES_DEBUG_JS; break;
+            while (*f) {
+                switch (*f) {
+                    case 'D':
+                        Modes.debug |= MODES_DEBUG_DEMOD;
+                        break;
+                    case 'd':
+                        Modes.debug |= MODES_DEBUG_DEMODERR;
+                        break;
+                    case 'C':
+                        Modes.debug |= MODES_DEBUG_GOODCRC;
+                        break;
+                    case 'c':
+                        Modes.debug |= MODES_DEBUG_BADCRC;
+                        break;
+                    case 'p':
+                        Modes.debug |= MODES_DEBUG_NOPREAMBLE;
+                        break;
+                    case 'n':
+                        Modes.debug |= MODES_DEBUG_NET;
+                        break;
+                    case 'j':
+                        Modes.debug |= MODES_DEBUG_JS;
+                        break;
                     default:
                         fprintf(stderr, "Unknown debugging flag: %c\n", *f);
                         exit(1);
@@ -3185,7 +3203,7 @@ int main(int argc, char **argv) {
                 }
                 f++;
             }
-        } else if (!strcmp(argv[j],"--stats")) {
+        } else if (!strcmp(argv[j], "--stats")) {
             Modes.stats = 1;
         } else if (!strcmp(argv[j], "--html_file") && more) {
             /* Comment: We could avoid allocating, deallocating and then allocating again by storing argv[++j] in a NULL initialized pointer
@@ -3193,10 +3211,10 @@ int main(int argc, char **argv) {
              * I'm letting it be initialized inside modesInitConfig however for readability*/
             free(Modes.html_file); // remove default value
             Modes.html_file = strdup(argv[++j]);
-        } else if (!strcmp(argv[j],"--snip") && more) {
+        } else if (!strcmp(argv[j], "--snip") && more) {
             snipMode(atoi(argv[++j]));
             exit(0);
-        } else if (!strcmp(argv[j],"--help")) {
+        } else if (!strcmp(argv[j], "--help")) {
             showHelp();
             exit(0);
         } else {
@@ -3221,13 +3239,13 @@ int main(int argc, char **argv) {
 #endif
     modesInit();
     if (Modes.net_only) {
-        fprintf(stderr,"Net-only mode, no RTL device or file open.\n");
+        fprintf(stderr, "Net-only mode, no RTL device or file open.\n");
     } else if (Modes.filename == NULL) {
         modesInitRTLSDR();
     } else {
         if (Modes.filename[0] == '-' && Modes.filename[1] == '\0') {
             Modes.fd = STDIN_FILENO;
-        } else if ((Modes.fd = open(Modes.filename,O_RDONLY)) == -1) {
+        } else if ((Modes.fd = open(Modes.filename, O_RDONLY)) == -1) {
             perror("Opening data file");
             exit(1);
         }
@@ -3245,9 +3263,9 @@ int main(int argc, char **argv) {
     pthread_create(&Modes.reader_thread, NULL, readerThreadEntryPoint, NULL);
 
     pthread_mutex_lock(&Modes.data_mutex);
-    while(1) {
+    while (1) {
         if (!Modes.data_ready) {
-            pthread_cond_wait(&Modes.data_cond,&Modes.data_mutex);
+            pthread_cond_wait(&Modes.data_cond, &Modes.data_mutex);
             continue;
         }
         computeMagnitudeVector();
@@ -3262,7 +3280,7 @@ int main(int argc, char **argv) {
          * stuff * at the same time. (This should only be useful with very
          * slow processors). */
         pthread_mutex_unlock(&Modes.data_mutex);
-        detectModeS(Modes.magnitude, Modes.data_len/2);
+        detectModeS(Modes.magnitude, Modes.data_len / 2);
         backgroundTasks();
         pthread_mutex_lock(&Modes.data_mutex);
         if (Modes.exit) break;
@@ -3284,7 +3302,7 @@ int main(int argc, char **argv) {
                Modes.stat_goodcrc + Modes.stat_fixed);
     }
 
-    if (Modes.filename != NULL) {free(Modes.filename);}
+    if (Modes.filename != NULL) { free(Modes.filename); }
     free(Modes.html_file);
 #ifdef OPENCL
     free(g_OpenCL_Dat.bitf_output_array);
@@ -3305,3 +3323,91 @@ int main(int argc, char **argv) {
 }
 
 
+void modesInit();
+
+if (Modes.net_only) {
+fprintf(stderr,
+"Net-only mode, no RTL device or file open.\n");
+} else if (Modes.filename == NULL) {
+modesInitRTLSDR();
+
+} else {
+if (Modes.filename[0] == '-' && Modes.filename[1] == '\0') {
+Modes.
+fd = STDIN_FILENO;
+} else if ((Modes.
+fd = open(Modes.filename, O_RDONLY)
+) == -1) {
+perror("Opening data file");
+exit(1);
+}
+}
+if (Modes.net)
+
+modesInitNet();
+
+/* If the user specifies --net-only, just run in order to serve network
+ * clients without reading data from the RTL device. */
+while (Modes.net_only) {
+backgroundTasks();
+
+modesWaitReadableClients(100);
+}
+
+/* Create the thread that will read the data from the device. */
+pthread_create(&Modes.reader_thread, NULL, readerThreadEntryPoint, NULL);
+
+pthread_mutex_lock(&Modes.data_mutex);
+while(1) {
+if (!Modes.data_ready) {
+pthread_cond_wait(&Modes.data_cond,&Modes.data_mutex);
+continue;
+}
+
+computeMagnitudeVector();
+
+/* Signal to the other thread that we processed the available data
+ * and we want more (useful for --ifile). */
+Modes.
+data_ready = 0;
+pthread_cond_signal(&Modes.data_cond);
+
+/* Process data after releasing the lock, so that the capturing
+ * thread can read data while we perform computationally expensive
+ * stuff * at the same time. (This should only be useful with very
+ * slow processors). */
+pthread_mutex_unlock(&Modes.data_mutex);
+detectModeS(Modes
+.magnitude, Modes.data_len/2);
+
+backgroundTasks();
+
+pthread_mutex_lock(&Modes.data_mutex);
+if (Modes.exit) break;
+}
+
+/* If --ifile and --stats were given, print statistics. */
+if (Modes.stats && Modes.filename) {
+printf("%lld valid preambles\n", Modes.stat_valid_preamble);
+printf("%lld demodulated again after phase correction\n",
+Modes.stat_out_of_phase);
+printf("%lld demodulated with zero errors\n",
+Modes.stat_demodulated);
+printf("%lld with good crc\n", Modes.stat_goodcrc);
+printf("%lld with bad crc\n", Modes.stat_badcrc);
+printf("%lld errors corrected\n", Modes.stat_fixed);
+printf("%lld single bit errors\n", Modes.stat_single_bit_fix);
+printf("%lld two bits errors\n", Modes.stat_two_bits_fix);
+printf("%lld total usable messages\n",
+Modes.stat_goodcrc + Modes.stat_fixed);
+}
+
+if (Modes.filename != NULL) {
+free(Modes
+.filename);}
+free(Modes
+.html_file);
+rtlsdr_close(Modes
+.dev);
+return 0;
+}

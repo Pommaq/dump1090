@@ -2,9 +2,15 @@
 // Created by timmy on 2021-06-05.
 //
 
-#ifndef DUMP1090_DATA_READER_H
-#define DUMP1090_DATA_READER_H
+#ifndef DUMP1090_DATA_READER_HPP
+#define DUMP1090_DATA_READER_HPP
+
 #include "rtl-sdr.h"
+#include "networking.hpp"
+#include "Modes.hpp"
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #define MODES_DEFAULT_RATE 2000000
 #define MODES_DEFAULT_FREQ 1090000000
@@ -55,8 +61,17 @@
 #define P_FILE_GMAP "/srv/gmap.html" /* Used in networking*/
 
 void modesInitRTLSDR(void);
+
 void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx);
+
 void readDataFromFile(void);
+
 void *readerThreadEntryPoint(void *arg);
 
-#endif // DUMP1090_DATA_READER_H
+void modesInit();
+
+
+void modesInitConfig() {
+
+
+#endif // DUMP1090_DATA_READER_HPP
