@@ -30,16 +30,6 @@ GPU_LOADER_THREAD:
 #include "../Headers/PacketHandling.hpp"
 
 
-
-bool init_gpu(){
-    /*Get device context, devices, create a queue, compile kernel. */
-
-}
-
-
-
-
-
 packet::packet(std::string &newdata, int64_t sequence, int32_t crc) {
     this->data_size = newdata.size();
     this->data = new char[this->data_size];
@@ -67,7 +57,7 @@ packet::packet(packet &other) {
     this->crc = other.crc;
 }
 
-packet& packet::operator=(packet const &other) {
+packet &packet::operator=(packet const &other) {
     this->data = new char[other.data_size];
     this->data_size = other.data_size;
     strncpy(this->data, other.data, this->data_size);
@@ -76,7 +66,7 @@ packet& packet::operator=(packet const &other) {
     return *this;
 }
 
-packet &packet::operator=(packet &&other) noexcept{
+packet &packet::operator=(packet &&other) noexcept {
     this->data_size = other.data_size;
     this->data = other.data;
     this->sequenceNumber = other.sequenceNumber;

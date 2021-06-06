@@ -6,7 +6,7 @@
 #define DUMP1090_DATA_READER_HPP
 
 #include "rtl-sdr.h"
-#include "networking.hpp"
+#include "anet.hpp"
 #include "Modes.hpp"
 #include <thread>
 #include <mutex>
@@ -67,11 +67,6 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx);
 void readDataFromFile(void);
 
 void *readerThreadEntryPoint(void *arg);
-
-void modesInit();
-
-
-void modesInitConfig() {
 
 
 #endif // DUMP1090_DATA_READER_HPP

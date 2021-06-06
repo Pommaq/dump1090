@@ -1,11 +1,81 @@
-//
-// Created by timmy on 2021-05-11.
-//
+/* Mode1090, a Mode S messages decoder for RTLSDR devices.
+ *
+ * Copyright (C) 2012 by Salvatore Sanfilippo <antirez@gmail.com>
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ *  *  Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *
+ *  *  Redistributions in binary form must reproduce the above copyright
+ *     notice, this list of conditions and the following disclaimer in the
+ *     documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-#include <csignal>
+
 #include "../Headers/main.hpp"
 
-g_settings Modes;
+
+/* ============================== Snip mode ================================= */
+
+/* Get raw IQ samples and filter everything is < than the specified level
+ * for more than 256 samples in order to reduce example file size. */
+void snipMode(int level) {
+    int i, q;
+    long long c = 0;
+
+    while ((i = getchar()) != EOF && (q = getchar()) != EOF) {
+        if (abs(i - 127) < level && abs(q - 127) < level) {
+            c++;
+            if (c > MODES_PREAMBLE_US * 4) continue;
+        } else {
+            c = 0;
+        }
+        putchar(i);
+        putchar(q);
+    }
+}
+
+
+
+
+/* This function is called a few times every second by main in order to
+ * perform tasks we need to do continuously, like accepting new clients
+ * from the net, refreshing the screen in interactive mode, and so forth. */
+void backgroundTasks() {
+    if (Modes.net) {
+        modesAcceptClients();
+        modesReadFromClients();
+        interactiveRemoveStaleAircrafts();
+    }
+
+    /* Refresh screen when in interactive mode. */
+    if (Modes.interactive &&
+        (mstime() - Modes.interactive_last_update) >
+        MODES_INTERACTIVE_REFRESH_TIME) {
+        interactiveRemoveStaleAircrafts();
+        interactiveShowData();
+        Modes.interactive_last_update = mstime();
+    }
+}
+
+
 
 int main(int argc, char **argv) {
     int j;
@@ -162,7 +232,7 @@ int main(int argc, char **argv) {
     }
 
     /* If --ifile and --stats were given, print statistics. */
-    if (Modes.stats && Modes.filename) {
+    if (Modes.stats && !Modes.filename.empty()) {
         std::cout << Modes.stat_valid_preamble << " valid preambles" << std::endl;
         std::cout << Modes.stat_out_of_phase << " demodulated again after phase correction" << std::endl;
         std::cout << Modes.stat_demodulated << " demodulated with zero errors" << std::endl;

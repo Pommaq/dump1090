@@ -4,17 +4,25 @@
 
 #ifndef DUMP1090_MODES_HPP
 #define DUMP1090_MODES_HPP
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
 #include <rtl-sdr.h>
-#include "networking.hpp"
+#include "anet.hpp"
 #include "data_reader.hpp"
 
-struct g_settings{
+
+/* =============================== Initialization =========================== */
+
+void modesInitConfig(void);
+void modesInit(void);
+
+class g_settings {
 public:
     g_settings() = default;
+
     /* Internal state, intended to be shared among threads */
     std::thread reader_thread;
     std::unique_lock<std::mutex> data_lock;     /* Mutex to synchronize buffer access. */
@@ -79,6 +87,11 @@ public:
     long long stat_sbs_connections;
     long long stat_out_of_phase;
 };
+
+extern g_settings Modes;
+
+void modesInitConfig();
+void modesInit(void);
 
 #endif //DUMP1090_MODES_HPP
 

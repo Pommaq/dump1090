@@ -149,34 +149,11 @@ void readDataFromFile() {
 void *readerThreadEntryPoint(void *arg) {
   MODES_NOTUSED(arg);
 
-  if (Modes.filename == nullptr) {
+  if (Modes.filename.empty()) {
     rtlsdr_read_async(Modes.dev, rtlsdrCallback, nullptr,
                       MODES_ASYNC_BUF_NUMBER, MODES_DATA_LEN);
   } else {
     readDataFromFile();
   }
   return nullptr;
-}
-
-
-void modesInitConfig() {
-    Modes.gain = MODES_MAX_GAIN;
-    Modes.dev_index = 0;
-    Modes.enable_agc = 0;
-    Modes.freq = MODES_DEFAULT_FREQ;
-    Modes.filename = NULL;
-    Modes.fix_errors = 1;
-    Modes.check_crc = 1;
-    Modes.raw = 0;
-    Modes.net = 0;
-    Modes.net_only = 0;
-    Modes.onlyaddr = 0;
-    Modes.debug = 0;
-    Modes.interactive = 0;
-    Modes.interactive_rows = MODES_INTERACTIVE_ROWS;
-    Modes.interactive_ttl = MODES_INTERACTIVE_TTL;
-    Modes.aggressive = 0;
-    Modes.interactive_rows = getTermRows();
-    Modes.loop = 0;
-    Modes.html_file = P_FILE_GMAP;
 }

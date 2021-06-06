@@ -1,0 +1,7 @@
+
+We want:
+    A thread loading the GPU with broken packets and retrieving them, doing the final crc calculations and giving back
+    to the decoder thread once its fixed.
+    A packet decoder thread (who throws broken packets to the GPU-loader/fixer thread)
+    A thread responsible for retrieving raw data, throwing it to the packet decoder thread.
+    A main thread serving the website/deciding when all other threads should quit.

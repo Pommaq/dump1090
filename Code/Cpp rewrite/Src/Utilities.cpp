@@ -1,6 +1,7 @@
 //
 // Created by timmy on 2021-06-06.
 //
+#include <sys/time.h>
 #include "../Headers/Utilities.hpp"
 
 void showHelp() {
@@ -41,3 +42,18 @@ void showHelp() {
               "                  j = Log frames to frames.js, loadable by debug.html.\n"
               << std::endl;
 }
+
+
+/* ============================= Utility functions ========================== */
+
+static long long mstime() {
+    timeval tv;
+    long long mst;
+
+    gettimeofday(&tv, nullptr);
+    mst = ((long long) tv.tv_sec) * 1000;
+    mst += tv.tv_usec / 1000;
+    return mst;
+}
+
+

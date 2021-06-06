@@ -6,14 +6,16 @@
 #define DUMP1090_GPUPREPARATIONS_HPP
 #define CL_HPP_TARGET_OPENCL_VERSION 210
 #define __CL_ENABLE_EXCEPTIONS
+
 #include <CL/cl2.hpp>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
 
-std::string readcode(std::string const& filename);
-class GPU{
+std::string readcode(std::string const &filename);
+
+class GPU {
 private:
     cl::Platform platform;
     cl::Device gpu;
@@ -24,7 +26,9 @@ private:
 
 public:
     GPU();
+
     ~GPU();
+
     cl::Program CompileProgram(std::string &code);
 };
 
