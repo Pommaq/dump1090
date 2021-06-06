@@ -4,3 +4,8 @@ testfiles/*.bin
 misc
 frames.js
 .*.swp
+/librtlsdr/
+/cmake-build-debug/
+/.idea
+Code/Cpp rewrite/Makefile~
+/.gitignore
