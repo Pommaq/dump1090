@@ -82,7 +82,7 @@ void modesInitRTLSDR() {
 void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
     MODES_NOTUSED(ctx);
 
-    Modes.data_lock.lock();
+    Modes.data_lock->lock();
     if (len > MODES_DATA_LEN)
         len = MODES_DATA_LEN;
     /* Move the last part of the previous buffer, that was not processed,
@@ -93,7 +93,7 @@ void rtlsdrCallback(unsigned char *buf, uint32_t len, void *ctx) {
     Modes.data_ready = 1;
     /* Signal to the other thread that new data is ready */
     Modes.data_cond.notify_one();
-    Modes.data_lock.unlock();
+    Modes.data_lock->unlock();
 }
 
 /* This is used when --ifile is specified in order to read data from file
@@ -111,22 +111,22 @@ void readDataFromFile() {
             Modes.exit = true;
         }
     }
-    Modes.data_lock.lock();
+    Modes.data_lock->lock();
     while (!Modes.exit) {
         ssize_t nread, toread;
         unsigned char *p;
 
         if (Modes.data_ready) {
-            Modes.data_cond.wait(Modes.data_lock);
+            Modes.data_cond.wait(*Modes.data_lock);
             continue;
         }
 
         if (Modes.interactive) {
             /* When --ifile and --interactive are used together, slow down
              * playing at the natural rate of the RTLSDR received. */
-            Modes.data_lock.unlock();
+            Modes.data_lock->unlock();
             usleep(5000);
-            Modes.data_lock.lock();
+            Modes.data_lock->lock();
         }
 
         /* Move the last part of the previous buffer, that was not processed,
@@ -161,6 +161,8 @@ void readDataFromFile() {
         /* Signal to the other thread that new data is ready */
         Modes.data_cond.notify_one();
     }
+    Modes.data_lock->unlock();
+    Modes.data_cond.notify_all();
 }
 
 /* We read data using a thread, so the main thread only handles decoding

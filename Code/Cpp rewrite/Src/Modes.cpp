@@ -88,3 +88,14 @@ void modesInit() {
     Modes.exit = false;
 }
 
+g_settings::g_settings() {
+    this->data_lock = new std::unique_lock<std::mutex>(mtx);
+    this->data_lock->unlock();
+    /* Mutex to synchronize buffer access. */
+}
+
+g_settings::~g_settings() {
+    delete this->data_lock;
+}
+
+

@@ -223,12 +223,14 @@ int main(int argc, char **argv) {
         modesWaitReadableClients(100);
     }
 
+
     /* Create the thread that will read the data from the device. */
+    Modes.data_lock->lock();
     Modes.reader_thread = std::thread(readerThreadEntryPoint, nullptr);
-    Modes.data_lock.lock();
     while (!Modes.exit) {
         if (!Modes.data_ready) {
-            Modes.data_cond.wait(Modes.data_lock);
+            Modes.data_lock->unlock();
+            Modes.data_cond.wait(*Modes.data_lock);
             continue;
         }
         computeMagnitudeVector();
@@ -241,10 +243,10 @@ int main(int argc, char **argv) {
         /* Process data after releasing the lock, so that the capturing
          * thread can read data while we perform computationally expensive
          * stuff * at the same time. */
-        Modes.data_lock.unlock();
+        Modes.data_lock->unlock();
         detectModeS(Modes.magnitude, Modes.data_len / 2);
         backgroundTasks();
-        Modes.data_lock.lock();
+        Modes.data_lock->lock();
     }
 
     /* If --ifile and --stats were given, print statistics. */
@@ -259,7 +261,7 @@ int main(int argc, char **argv) {
         std::cout << Modes.stat_two_bits_fix << " two bit errors" << std::endl;
         std::cout << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
     }
-
+    Modes.reader_thread.join();
     rtlsdr_close(Modes.dev);
     return 0;
 }
