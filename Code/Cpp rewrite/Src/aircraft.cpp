@@ -2,8 +2,11 @@
 // Created by timmy on 2021-06-06.
 //
 
-#include "../Headers/aircraft.h"
+#include <cstring>
+#include "../Headers/aircraft.hpp"
 #include "../Headers/Modes.hpp"
+#include "../Headers/Decoding.hpp"
+#include "../Headers/Utilities.hpp"
 
 /* Return a description of planes in json. */
 char *aircraftsToJson(int *len) {
@@ -86,9 +89,9 @@ void interactiveRemoveStaleAircrafts() {
 
 
 /* Receive new messages and populate the interactive mode with more info. */
-struct aircraft *interactiveReceiveData(struct modesMessage *mm) {
+aircraft *interactiveReceiveData(modesMessage *mm) {
     uint32_t addr;
-    struct aircraft *a, *aux;
+    aircraft *a, *aux;
 
     if (Modes.check_crc && mm->crcok == 0) return NULL;
     addr = (mm->aa1 << 16) | (mm->aa2 << 8) | mm->aa3;
@@ -107,7 +110,7 @@ struct aircraft *interactiveReceiveData(struct modesMessage *mm) {
          * since the aircraft that is currently on head sent a bitf_message,
          * othewise with multiple aircrafts at the same time we have an
          * useless shuffle of positions on the screen. */
-        if (0 && Modes.aircrafts != a && (time(NULL) - a->seen) >= 1) {
+        if (0 && Modes.aircrafts != a && (time(NULL) - a->seen) >= 1) { // TODO: My IDE reports this as always false. Investigate.
             aux = Modes.aircrafts;
             while (aux->next != a) aux = aux->next;
             /* Now we are a node before the aircraft to remove. */
@@ -155,14 +158,14 @@ struct aircraft *interactiveReceiveData(struct modesMessage *mm) {
 
 /* Return the aircraft with the specified address, or NULL if no aircraft
  * exists with this address. */
-struct aircraft *interactiveFindAircraft(uint32_t addr) {
+aircraft *interactiveFindAircraft(uint32_t addr) {
     struct aircraft *a = Modes.aircrafts;
 
     while (a) {
         if (a->addr == addr) return a;
         a = a->next;
     }
-    return NULL;
+    return nullptr;
 }
 
 
@@ -171,7 +174,7 @@ struct aircraft *interactiveFindAircraft(uint32_t addr) {
 /* Return a new aircraft structure for the interactive mode linked list
  * of aircrafts. */
 struct aircraft *interactiveCreateAircraft(uint32_t addr) {
-    struct aircraft *a = malloc(sizeof(*a));
+    auto *a = new aircraft;
 
     a->addr = addr;
     snprintf(a->hexaddr, sizeof(a->hexaddr), "%06x", (int) addr);
@@ -187,9 +190,9 @@ struct aircraft *interactiveCreateAircraft(uint32_t addr) {
     a->even_cprtime = 0;
     a->lat = 0;
     a->lon = 0;
-    a->seen = time(NULL);
+    a->seen = time(nullptr);
     a->messages = 0;
-    a->next = NULL;
+    a->next = nullptr;
     return a;
 }
 

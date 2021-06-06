@@ -1,8 +1,13 @@
 //
 // Created by timmy on 2021-06-06.
 //
+#include <iostream>
+#include <cstring>
 #include "../Headers/Modes.hpp"
-#include "../Headers/Terminal.h"
+#include "../Headers/Networking.hpp"
+#include "../Headers/Terminal.hpp"
+
+
 
 
 g_settings Modes;
@@ -12,7 +17,7 @@ void modesInitConfig() {
     Modes.dev_index = 0;
     Modes.enable_agc = 0;
     Modes.freq = MODES_DEFAULT_FREQ;
-    Modes.filename = NULL;
+    Modes.filename = "";
     Modes.fix_errors = 1;
     Modes.check_crc = 1;
     Modes.raw = 0;
@@ -29,11 +34,9 @@ void modesInitConfig() {
     Modes.html_file = P_FILE_GMAP;
 }
 
-void modesInit(void) {
+void modesInit() {
     int i, q;
 
-    pthread_mutex_init(&Modes.data_mutex, NULL);
-    pthread_cond_init(&Modes.data_cond, NULL);
     /* We add a full bitf_message minus a final bit to the length, so that we
      * can carry the remaining part of the buffer that we can't process
      * in the bitf_message detection loop, back at the start of the next data
@@ -43,13 +46,16 @@ void modesInit(void) {
     Modes.data_ready = 0;
     /* Allocate the ICAO address cache. We use two uint32_t for every
      * entry because it's a addr / timestamp pair for every entry. */
-    Modes.icao_cache = malloc(sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
+    Modes.icao_cache = new uint32_t[MODES_ICAO_CACHE_LEN*2];
     memset(Modes.icao_cache, 0, sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
-    Modes.aircrafts = NULL;
+    Modes.aircrafts = nullptr;
     Modes.interactive_last_update = 0;
-    if ((Modes.data = malloc(Modes.data_len)) == NULL ||
-        (Modes.magnitude = malloc(Modes.data_len * 2)) == NULL) {
-        fprintf(stderr, "Out of memory allocating data buffer.\n");
+    try {
+        Modes.data = new unsigned char[Modes.data_len];
+        Modes.magnitude = new uint16_t[Modes.data_len];
+    }
+    catch (std::bad_alloc){
+        std::cerr << "Out of memory allocating data buffer." << std::endl;
         exit(1);
     }
     memset(Modes.data, 127, Modes.data_len);
@@ -60,7 +66,8 @@ void modesInit(void) {
      * We scale to 0-255 range multiplying by 1.4 in order to ensure that
      * every different I/Q pair will result in a different magnitude value,
      * not losing any resolution. */
-    Modes.maglut = malloc(129 * 129 * 2);
+    Modes.maglut = new uint16_t[129*129];
+            //malloc(129 * 129 * 2);
     for (i = 0; i <= 128; i++) {
         for (q = 0; q <= 128; q++) {
             Modes.maglut[i * 129 + q] = round(sqrt(i * i + q * q) * 360);

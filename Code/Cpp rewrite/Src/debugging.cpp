@@ -2,8 +2,10 @@
 // Created by timmy on 2021-06-06.
 //
 
-#include "../Headers/debugging.h"
-
+#include <cstring>
+#include "../Headers/debugging.hpp"
+#include "../Headers/Modes.hpp"
+#include "../Headers/Decoding.hpp"
 /* ============================== Debugging ================================= */
 
 /* Helper function for dumpMagnitudeVector().
@@ -19,7 +21,7 @@
  * "." is 1
  */
 void dumpMagnitudeBar(int index, int magnitude) {
-    char *set = " .-o";
+    const char *set = " .-o";
     char buf[256];
     int div = magnitude / 256 / 4;
     int rem = magnitude / 256 % 4;
@@ -64,7 +66,7 @@ void dumpMagnitudeVector(uint16_t *m, uint32_t offset) {
 
 /* Produce a raw representation of the bitf_message as a Javascript file
  * loadable by debug.html. */
-void dumpRawMessageJS(char *descr, unsigned char *msg,
+void dumpRawMessageJS(const char *descr, unsigned char *msg,
                       uint16_t *m, uint32_t offset, int fixable) {
     int padding = 5; /* Show a few samples before the actual start. */
     int start = offset - padding;
@@ -107,7 +109,7 @@ void dumpRawMessageJS(char *descr, unsigned char *msg,
  * display packets in a graphical format if the Javascript bitf_output was
  * enabled.
  */
-void dumpRawMessage(char *descr, unsigned char *msg,
+void dumpRawMessage(const char *descr, unsigned char *msg,
                     uint16_t *m, uint32_t offset) {
 
     int j;

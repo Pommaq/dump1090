@@ -7,7 +7,7 @@
 
 #include <iostream>
 
-static long long mstime(void);
+long long mstime();
 
 void showHelp();
 

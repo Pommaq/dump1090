@@ -30,6 +30,9 @@ GPU_LOADER_THREAD:
 #include "../Headers/PacketHandling.hpp"
 
 
+std::vector<packet> raw_packets;
+std::vector<packet> finished_packets;
+
 packet::packet(std::string &newdata, int64_t sequence, int32_t crc) {
     this->data_size = newdata.size();
     this->data = new char[this->data_size];

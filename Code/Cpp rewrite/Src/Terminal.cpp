@@ -3,24 +3,53 @@
 //
 
 #include <csignal>
-#include "../Headers/Terminal.h"
+#include "../Headers/Terminal.hpp"
 #include "../Headers/Modes.hpp"
-#include "../Headers/aircraft.h"
-#include <csignal>
+#include "../Headers/aircraft.hpp"
+#include <unistd.h>
+#include <asm-generic/ioctls.h>
+#include <sys/ioctl.h>
+#include <cstring>
+#include <iostream>
 
 /* ============================ Terminal handling  ========================== */
+
+
+const char *ca_str[8] = {
+        /* 0 */ "Level 1 (Survillance Only)",
+        /* 1 */ "Level 2 (DF0,4,5,11)",
+        /* 2 */ "Level 3 (DF0,4,5,11,20,21)",
+        /* 3 */ "Level 4 (DF0,4,5,11,20,21,24)",
+        /* 4 */ "Level 2+3+4 (DF0,4,5,11,20,21,24,code7 - is on ground)",
+        /* 5 */ "Level 2+3+4 (DF0,4,5,11,20,21,24,code7 - is on airborne)",
+        /* 6 */ "Level 2+3+4 (DF0,4,5,11,20,21,24,code7)",
+        /* 7 */ "Level 7 ???"
+};
+
+/* Flight status table. */
+const char *fs_str[8] = {
+        /* 0 */ "Normal, Airborne",
+        /* 1 */ "Normal, On the ground",
+        /* 2 */ "ALERT,  Airborne",
+        /* 3 */ "ALERT,  On the ground",
+        /* 4 */ "ALERT & Special Position Identification. Airborne or Ground",
+        /* 5 */ "Special Position Identification. Airborne or Ground",
+        /* 6 */ "Value 6 is not assigned",
+        /* 7 */ "Value 7 is not assigned"
+};
+
 
 /* Handle resizing terminal. */
 void sigWinchCallback() {
     signal(SIGWINCH, SIG_IGN);
     Modes.interactive_rows = getTermRows();
     interactiveShowData();
-    signal(SIGWINCH, sigWinchCallback);
+    signal(SIGWINCH, reinterpret_cast<__sighandler_t>(sigWinchCallback));
 }
 
 /* Get the number of rows after the terminal changes size. */
 int getTermRows() {
-    struct winsize w;
+    winsize w;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &w);
     return w.ws_row;
 }
@@ -29,19 +58,19 @@ int getTermRows() {
 /* Show the currently captured interactive data on screen. */
 void interactiveShowData() {
     struct aircraft *a = Modes.aircrafts;
-    time_t now = time(NULL);
+    time_t now = time(nullptr);
     char progress[4];
     int count = 0;
 
     memset(progress, ' ', 3);
-    progress[time(NULL) % 3] = '.';
+    progress[time(nullptr) % 3] = '.';
     progress[3] = '\0';
 
-    printf("\x1b[H\x1b[2J");    /* Clear the screen */
-    printf(
-            "Hex    Flight   Altitude  Speed   Lat       Lon       Track  Messages Seen %s\n"
-            "--------------------------------------------------------------------------------\n",
-            progress);
+    std::cout << "\x1b[H\x1b[2J"    /* Clear the screen */
+              <<
+              "Hex    Flight   Altitude  Speed   Lat       Lon       Track  Messages Seen "
+              << progress << "\n--------------------------------------------------------------------------------"
+              << std::endl;
 
     while (a && count < Modes.interactive_rows) {
         int altitude = a->altitude, speed = a->speed;
@@ -85,22 +114,20 @@ void displayModesMessage(modesMessage *mm) {
 
     printf("CRC: %06x (%s)\n", (int) mm->crc, mm->crcok ? "ok" : "wrong");
     if (mm->errorbit != -1)
-        printf("Single bit error fixed, bit %d\n", mm->errorbit);
+        std::cout << "Single bit error fixed, bit " << mm->errorbit << std::endl;
 
     if (mm->msgtype == 0) {
         /* DF 0 */
-        printf("DF 0: Short Air-Air Surveillance.\n");
-        printf("  Altitude       : %d %s\n", mm->altitude,
-               (mm->unit == MODES_UNIT_METERS) ? "meters" : "feet");
+        std::cout << "DF 0: Short Air-Air Surveillance." << std::endl
+        << "  Altitude       : " << mm->altitude
+        << ((mm->unit == MODES_UNIT_METERS) ? "meters" : "feet") << std::endl;
         printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
     } else if (mm->msgtype == 4 || mm->msgtype == 20) {
-        printf("DF %d: %s, Altitude Reply.\n", mm->msgtype,
-               (mm->msgtype == 4) ? "Surveillance" : "Comm-B");
-        printf("  Flight Status  : %s\n", fs_str[mm->fs]);
-        printf("  DR             : %d\n", mm->dr);
-        printf("  UM             : %d\n", mm->um);
-        printf("  Altitude       : %d %s\n", mm->altitude,
-               (mm->unit == MODES_UNIT_METERS) ? "meters" : "feet");
+        std::cout << "DF " << mm->msgtype << ":" << ((mm->msgtype == 4) ? "Surveillance" : "Comm-B") << ", Altitude Reply." << std::endl
+        << "  Flight Status  : " << fs_str[mm->fs] << std::endl
+        << "  DR             : " << mm->dr << std::endl
+        << "  UM             : " << mm->um << std::endl
+        << "  Altitude       : " << mm->altitude << " " << ((mm->unit == MODES_UNIT_METERS) ? "meters" : "feet") << std::endl;
         printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
 
         if (mm->msgtype == 20) {
@@ -125,13 +152,12 @@ void displayModesMessage(modesMessage *mm) {
         printf("  ICAO Address: %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
     } else if (mm->msgtype == 17) {
         /* DF 17 */
-        printf("DF 17: ADS-B bitf_message.\n");
-        printf("  Capability     : %d (%s)\n", mm->ca, ca_str[mm->ca]);
+        std::cout << "DF 17: ADS-B bitf_message." << std::endl
+        << "  Capability     :" << mm->ca << "(" << ca_str[mm->ca] << ")" << std::endl;
         printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
-        printf("  Extended Squitter  Type: %d\n", mm->metype);
-        printf("  Extended Squitter  Sub : %d\n", mm->mesub);
-        printf("  Extended Squitter  Name: %s\n",
-               getMEDescription(mm->metype, mm->mesub));
+        std::cout << "  Extended Squitter  Type: " << mm->metype << std::endl
+        << "  Extended Squitter  Sub : " << mm->mesub << std::endl
+        << "  Extended Squitter  Name: " << getMEDescription(mm->metype, mm->mesub) << std::endl;
 
         /* Decode the extended squitter bitf_message. */
         if (mm->metype >= 1 && mm->metype <= 4) {
@@ -178,8 +204,8 @@ void displayModesMessage(modesMessage *mm) {
 }
 
 
-char *getMEDescription(int metype, int mesub) {
-    char *mename = "Unknown";
+std::string & getMEDescription(int metype, int mesub) {
+    static std::string mename = "Unknown";
 
     if (metype >= 1 && metype <= 4)
         mename = "Aircraft Identification and Category";

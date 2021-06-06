@@ -29,7 +29,27 @@
  */
 
 
-#include "../Headers/main.hpp"
+#include <cstring>
+#include <csignal>
+#include <fstream>
+#include <iostream>
+
+#include "../Headers/aircraft.hpp"
+#include "../Headers/anet.hpp"
+#include "../Headers/data_reader.hpp"
+#include "../Headers/debugging.hpp"
+#include "../Headers/Decoding.hpp"
+#include "../Headers/Expanded_set.hpp"
+#include "../Headers/GPUPreparations.hpp"
+#include "../Headers/Modes.hpp"
+#include "../Headers/Networking.hpp"
+#include "../Headers/PacketHandling.hpp"
+#include "../Headers/Terminal.hpp"
+#include "../Headers/Utilities.hpp"
+
+
+void snipMode(int level);
+void backgroundTasks();
 
 
 /* ============================== Snip mode ================================= */
@@ -178,7 +198,7 @@ int main(int argc, char **argv) {
     }
 
     /* Setup for SIGWINCH for handling lines */
-    if (Modes.interactive == 1) signal(SIGWINCH, sigWinchCallback);
+    if (Modes.interactive == 1) signal(SIGWINCH, reinterpret_cast<__sighandler_t>(sigWinchCallback));
 
     /* Initialization */
 
@@ -189,10 +209,9 @@ int main(int argc, char **argv) {
         modesInitRTLSDR();
     } else {
         if (Modes.filename[0] == '-' && Modes.filename[1] == '\0') {
-            Modes.fd = STDIN_FILENO;
-        } else if ((Modes.fd = open(Modes.filename, O_RDONLY)) == -1) {
-            perror("Opening data file");
-            exit(1);
+            Modes.stdinput = true;
+        } else{
+            Modes.stdinput = false;
         }
     }
     if (Modes.net) modesInitNet();
@@ -205,7 +224,7 @@ int main(int argc, char **argv) {
     }
 
     /* Create the thread that will read the data from the device. */
-    pthread_create(&Modes.reader_thread, NULL, readerThreadEntryPoint, NULL);
+    Modes.reader_thread = std::thread(readerThreadEntryPoint, nullptr);
     Modes.data_lock.lock();
     while (!Modes.exit) {
         if (!Modes.data_ready) {

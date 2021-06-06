@@ -7,8 +7,7 @@
 #define P_FILE_GMAP "/srv/gmap.html"
 
 #include "../Headers/Modes.hpp"
-#include "../Headers/PacketHandling.hpp"
-#include "../Headers/Decoding.h"
+#include "../Headers/Decoding.hpp"
 
 void modesWaitReadableClients(int timeout_ms);
 
@@ -53,12 +52,8 @@ struct netservices {
     std::string descr;
     int *socket;
     int port;
-} modesNetServices[MODES_NET_SERVICES_NUM] = {
-        {"Raw TCP bitf_output",         Modes.ros,   MODES_NET_OUTPUT_RAW_PORT},
-        {"Raw TCP input",               Modes.ris,   MODES_NET_INPUT_RAW_PORT},
-        {"HTTP server",                 Modes.https, MODES_NET_HTTP_PORT},
-        {"Basestation TCP bitf_output", Modes.sbsos, MODES_NET_OUTPUT_SBS_PORT}
 };
+extern netservices modesNetServices[MODES_NET_SERVICES_NUM];
 
 
 #endif //DUMP1090_NETWORKING_HPP

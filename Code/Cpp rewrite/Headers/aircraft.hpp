@@ -2,8 +2,8 @@
 // Created by timmy on 2021-06-06.
 //
 
-#ifndef DUMP1090_AIRCRAFT_H
-#define DUMP1090_AIRCRAFT_H
+#ifndef DUMP1090_AIRCRAFT_HPP
+#define DUMP1090_AIRCRAFT_HPP
 
 #include <cstdint>
 #include <ctime>
@@ -39,4 +39,4 @@ aircraft *interactiveCreateAircraft(uint32_t addr);
 
 aircraft *interactiveFindAircraft(uint32_t addr);
 
-#endif //DUMP1090_AIRCRAFT_H
+#endif //DUMP1090_AIRCRAFT_HPP

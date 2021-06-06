@@ -1,10 +1,7 @@
 //
 // Created by Timmy on 4/14/2021.
 //
-
-#ifndef DUMP1090_PACKETHANDLING_HPP
-#define DUMP1090_PACKETHANDLING_HPP
-
+#pragma once
 #include <mutex>
 #include <vector>
 #include <atomic>
@@ -32,8 +29,3 @@ struct packet {
 };
 
 
-std::vector<packet> raw_packets;
-std::vector<packet> finished_packets;
-
-
-#endif //DUMP1090_PACKETHANDLING_HPP

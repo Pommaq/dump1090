@@ -5,13 +5,8 @@
 #ifndef DUMP1090_DATA_READER_HPP
 #define DUMP1090_DATA_READER_HPP
 
-#include "rtl-sdr.h"
-#include "anet.h"
-#include "Modes.hpp"
-#include <thread>
-#include <mutex>
-#include <condition_variable>
 
+#include <cstdint>
 
 void modesInitRTLSDR(void);
 

@@ -4,10 +4,11 @@
 #include <csignal>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <iostream>
 #include "../Headers/Networking.hpp"
 #include "../Headers/Modes.hpp"
 #include "../Headers/PacketHandling.hpp"
-#include "../Headers/Decoding.h"
+#include "../Headers/Decoding.hpp"
 
 
 /* ============================= Networking =================================
@@ -23,6 +24,12 @@
  */
 
 
+netservices modesNetServices[MODES_NET_SERVICES_NUM] = {
+        {"Raw TCP bitf_output",         Modes.ros,   MODES_NET_OUTPUT_RAW_PORT},
+        {"Raw TCP input",               Modes.ris,   MODES_NET_INPUT_RAW_PORT},
+        {"HTTP server",                 Modes.https, MODES_NET_HTTP_PORT},
+        {"Basestation TCP bitf_output", Modes.sbsos, MODES_NET_OUTPUT_SBS_PORT}
+};
 
 /* Networking "stack" initialization. */
 void modesInitNet() {
@@ -34,10 +41,8 @@ void modesInitNet() {
     for (j = 0; j < MODES_NET_SERVICES_NUM; j++) {
         int s = anetTcpServer(Modes.aneterr, modesNetServices[j].port, nullptr);
         if (s == -1) {
-            fprintf(stderr, "Error opening the listening port %d (%s): %s\n",
-                    modesNetServices[j].port,
-                    modesNetServices[j].descr,
-                    strerror(errno));
+            std::cerr << "Error opening the listening port " << modesNetServices[j].port
+            << "(" << modesNetServices[j].descr << "): " << strerror(errno) << std::endl;
             exit(1);
         }
         anetNonBlock(Modes.aneterr, s);
@@ -216,7 +221,7 @@ void modesSendSBSOutput(modesMessage *mm, aircraft *a) {
  * The handelr returns 0 on success, or 1 to signal this function we
  * should close the connection with the client in case of non-recoverable
  * errors. */
-void modesReadFromClient( client *c, char *sep,
+void modesReadFromClient( client *c, const char *sep,
                          int(*handler)(client *)) {
     while (true) {
         int left = MODES_CLIENT_BUF_SIZE - c->buflen;
@@ -334,7 +339,7 @@ int handleHTTPRequest( client *c) {
     int clen, hdrlen;
     int httpver, keepalive;
     char *p, *url, *content;
-    char *ctype;
+    std::string ctype;
 
     if (Modes.debug & MODES_DEBUG_NET)
         printf("\nHTTP request: %s\n", c->buf);
@@ -369,17 +374,20 @@ int handleHTTPRequest( client *c) {
         content = aircraftsToJson(&clen);
         ctype = MODES_CONTENT_TYPE_JSON;
     } else {
-        stat sbuf;
-        int fd = -1;
+        struct stat sbuf;
+        std::ifstream file;
 
-        if (stat(Modes.html_file.c_str(), &sbuf) != -1 &&
-            (fd = open(Modes.html_file, O_RDONLY)) != -1) {
-            content = malloc(sbuf.st_size);
-            if (read(fd, content, sbuf.st_size) == -1) {
-                snprintf(content, sbuf.st_size, "Error reading from file: %s",
-                         strerror(errno));
+        if (stat(Modes.html_file.c_str(), &sbuf) != -1){
+            file.open(Modes.html_file);
+            if (file.good()) { // If we can successfully open the file
+                content = new char[sbuf.st_size]; // ALlocate a large enough buffer
+                file.read(content, sbuf.st_size);
+                if (!file.good()) {
+                    snprintf(content, sbuf.st_size, "Error reading from file: %s",
+                             strerror(errno));
+                }
+                clen = sbuf.st_size;
             }
-            clen = sbuf.st_size;
         } else {
             char buf[128];
 
@@ -387,7 +395,7 @@ int handleHTTPRequest( client *c) {
                             strerror(errno));
             content = strdup(buf);
         }
-        if (fd != -1) close(fd);
+        file.close();
         ctype = MODES_CONTENT_TYPE_HTML;
     }
 
@@ -400,7 +408,7 @@ int handleHTTPRequest( client *c) {
                       "Content-Length: %d\r\n"
                       "Access-Control-Allow-Origin: *\r\n"
                       "\r\n",
-                      ctype,
+                      ctype.c_str(),
                       keepalive ? "keep-alive" : "close",
                       clen);
 

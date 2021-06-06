@@ -46,7 +46,7 @@ void showHelp() {
 
 /* ============================= Utility functions ========================== */
 
-static long long mstime() {
+long long mstime() {
     timeval tv;
     long long mst;
 

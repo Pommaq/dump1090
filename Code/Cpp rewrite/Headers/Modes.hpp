@@ -57,8 +57,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
+#include <memory>
 #include <rtl-sdr.h>
-#include "anet.h"
+#include "anet.hpp"
 #include "data_reader.hpp"
 
 
@@ -78,7 +79,7 @@ public:
     unsigned char *data;            /* Raw IQ samples buffer */
     uint16_t *magnitude;            /* Magnitude vector */
     uint32_t data_len;              /* Buffer length. */
-    int fd;                         /* --ifile option file descriptor. */
+    bool stdinput;
     std::ifstream ifs;
     int data_ready;                 /* Data ready to be processed. */
     uint32_t *icao_cache;           /* Recently seen ICAO addresses cache. */

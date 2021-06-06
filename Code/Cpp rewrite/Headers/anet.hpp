@@ -34,7 +34,7 @@
 #define ANET_OK 0
 #define ANET_ERR -1
 #define ANET_ERR_LEN 256
-
+#include <sys/stat.h>
 #if defined(__sun)
 #define AF_LOCAL AF_UNIX
 #endif
