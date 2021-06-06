@@ -27,14 +27,14 @@ public:
     int data_ready;                 /* Data ready to be processed. */
     uint32_t *icao_cache;           /* Recently seen ICAO addresses cache. */
     uint16_t *maglut;               /* I/Q -> Magnitude lookup table. */
-    int exit;                       /* Exit from the main loop when true. */
+    volatile bool exit;                       /* Exit from the main loop when true. */
 
     /* RTLSDR */
     int dev_index;
-    int gain;
+    double gain;
     int enable_agc;
     rtlsdr_dev_t *dev;
-    int freq;
+    long long int freq;
 
     /* Networking */
     char aneterr[ANET_ERR_LEN];

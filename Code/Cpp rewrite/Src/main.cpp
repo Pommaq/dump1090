@@ -13,11 +13,11 @@ int main(int argc, char **argv) {
     /* Set sane defaults. */
     modesInitConfig();
 
-    /* Parse the argument line options */
-    std::string argument;
+    /* Parse the command line options */
+    std::string argument;  // Using a string entity to make this mess slightly more readable
     for (j = 1; j < argc; j++) {
         int more = j + 1 < argc; /* There are more arguments. */
-        argument = argv[j]; // Using a string entity to make this mess slightly more readable
+        argument = argv[j];
         if (argument == "--device-index" && more) {
             Modes.dev_index = atoi(argv[++j]);
         } else if (argument == "--gain" && more) {
@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
         } else if (argument == "--enable-agc") {
             Modes.enable_agc++;
         } else if (argument == "--freq" && more) {
-            Modes.freq = strtoll(argv[++j], NULL, 10);
+            Modes.freq = strtoll(argv[++j], nullptr, 10);
         } else if (argument == "--ifile" && more) {
             Modes.filename = argv[++j];
         } else if (argument == "--loop") {
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
                         Modes.debug |= MODES_DEBUG_JS;
                         break;
                     default:
-                        fprintf(stderr, "Unknown debugging flag: %c\n", *f);
+                        std::cerr << "Unknown debugging flag: " << *f << std::endl;
                         exit(1);
                         break;
                 }
@@ -139,11 +139,10 @@ int main(int argc, char **argv) {
 
     /* Create the thread that will read the data from the device. */
     pthread_create(&Modes.reader_thread, NULL, readerThreadEntryPoint, NULL);
-
-    pthread_mutex_lock(&Modes.data_mutex);
-    while (1) {
+    Modes.data_lock.lock();
+    while (!Modes.exit) {
         if (!Modes.data_ready) {
-            pthread_cond_wait(&Modes.data_cond, &Modes.data_mutex);
+            Modes.data_cond.wait(Modes.data_lock);
             continue;
         }
         computeMagnitudeVector();
@@ -151,37 +150,29 @@ int main(int argc, char **argv) {
         /* Signal to the other thread that we processed the available data
          * and we want more (useful for --ifile). */
         Modes.data_ready = 0;
-        pthread_cond_signal(&Modes.data_cond);
+        Modes.data_cond.notify_one();
 
         /* Process data after releasing the lock, so that the capturing
          * thread can read data while we perform computationally expensive
-         * stuff * at the same time. (This should only be useful with very
-         * slow processors). */
-        pthread_mutex_unlock(&Modes.data_mutex);
+         * stuff * at the same time. */
+        Modes.data_lock.unlock();
         detectModeS(Modes.magnitude, Modes.data_len / 2);
         backgroundTasks();
-        pthread_mutex_lock(&Modes.data_mutex);
-        if (Modes.exit) break;
+        Modes.data_lock.lock();
     }
 
     /* If --ifile and --stats were given, print statistics. */
     if (Modes.stats && Modes.filename) {
-        printf("%lld valid preambles\n", Modes.stat_valid_preamble);
-        printf("%lld demodulated again after phase correction\n",
-               Modes.stat_out_of_phase);
-        printf("%lld demodulated with zero errors\n",
-               Modes.stat_demodulated);
-        printf("%lld with good crc\n", Modes.stat_goodcrc);
-        printf("%lld with bad crc\n", Modes.stat_badcrc);
-        printf("%lld errors corrected\n", Modes.stat_fixed);
-        printf("%lld single bit errors\n", Modes.stat_single_bit_fix);
-        printf("%lld two bits errors\n", Modes.stat_two_bits_fix);
-        printf("%lld total usable messages\n",
-               Modes.stat_goodcrc + Modes.stat_fixed);
+        std::cout << Modes.stat_valid_preamble << " valid preambles" << std::endl;
+        std::cout << Modes.stat_out_of_phase << " demodulated again after phase correction" << std::endl;
+        std::cout << Modes.stat_demodulated << " demodulated with zero errors" << std::endl;
+        std::cout << Modes.stat_goodcrc << " with good crc" << std::endl;
+        std::cout << Modes.stat_badcrc << " with bad crc" << std::endl;
+        std::cout << Modes.stat_fixed << " errors corrected" << std::endl;
+        std::cout << Modes.stat_single_bit_fix << " single bit errors" << std::endl;
+        std::cout << Modes.stat_two_bits_fix << " two bit errors" << std::endl;
+        std::cout << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
     }
-
-    if (Modes.filename != NULL) { free(Modes.filename); }
-    free(Modes.html_file);
 
     rtlsdr_close(Modes.dev);
     return 0;
