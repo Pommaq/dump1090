@@ -17,6 +17,7 @@ private:
     int cprModFunction(int a, int b);
 public:
     void decodeCPR();
+    aircraft(uint32_t addr);
     uint32_t addr;      /* ICAO address */
     char hexaddr[7];    /* Printable ICAO address */
     char flight[9];     /* Flight number */

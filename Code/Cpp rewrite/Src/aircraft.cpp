@@ -108,26 +108,7 @@ aircraft *interactiveFindAircraft(uint32_t addr) {
 /* Return a new aircraft structure for the interactive mode linked list
  * of aircrafts. */
 struct aircraft *interactiveCreateAircraft(uint32_t addr) {
-    auto *a = new aircraft;
-
-    a->addr = addr;
-    snprintf(a->hexaddr, sizeof(a->hexaddr), "%06x", (int) addr);
-    a->flight[0] = '\0';
-    a->altitude = 0;
-    a->speed = 0;
-    a->track = 0;
-    a->odd_cprlat = 0;
-    a->odd_cprlon = 0;
-    a->odd_cprtime = 0;
-    a->even_cprlat = 0;
-    a->even_cprlon = 0;
-    a->even_cprtime = 0;
-    a->lat = 0;
-    a->lon = 0;
-    a->seen = time(nullptr);
-    a->messages = 0;
-    a->next = nullptr;
-    return a;
+    return new aircraft(addr);
 }
 
 /* This algorithm comes from:
@@ -256,4 +237,24 @@ int aircraft::cprModFunction(int a, int b) {
     int res = a % b;
     if (res < 0) res += b;
     return res;
+}
+
+aircraft::aircraft(uint32_t addr) {
+    this->addr = addr;
+    snprintf(this->hexaddr, sizeof(this->hexaddr), "%06x", (int) addr);
+    this->flight[0] = '\0';
+    this->altitude = 0;
+    this->speed = 0;
+    this->track = 0;
+    this->odd_cprlat = 0;
+    this->odd_cprlon = 0;
+    this->odd_cprtime = 0;
+    this->even_cprlat = 0;
+    this->even_cprlon = 0;
+    this->even_cprtime = 0;
+    this->lat = 0;
+    this->lon = 0;
+    this->seen = time(nullptr);
+    this->messages = 0;
+    this->next = nullptr;
 }
