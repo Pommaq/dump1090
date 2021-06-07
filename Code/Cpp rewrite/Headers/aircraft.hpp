@@ -33,8 +33,6 @@ void interactiveRemoveStaleAircrafts();
 
 char *aircraftsToJson(int *len);
 
-aircraft *interactiveReceiveData(struct modesMessage *mm);
-
 aircraft *interactiveCreateAircraft(uint32_t addr);
 
 aircraft *interactiveFindAircraft(uint32_t addr);

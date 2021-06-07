@@ -9,6 +9,7 @@
 #include "../Headers/aircraft.hpp"
 #include "../Headers/Terminal.hpp"
 #include "../Headers/debugging.hpp"
+#include "../Headers/Utilities.hpp"
 
 /* ===================== Mode S detection and decoding  ===================== */
 
@@ -974,4 +975,71 @@ void modesMessage::updatePlanes() {
             modesSendRawOutput(this);  /* Feed raw bitf_output clients. */
         }
     }
+}
+
+/* Receive new messages and populate the interactive mode with more info. */
+aircraft *modesMessage::interactiveReceiveData() {
+    uint32_t addr;
+    aircraft *a, *aux;
+
+    if (Modes.check_crc && this->crcok == 0) return nullptr;
+    addr = (this->aa1 << 16) | (this->aa2 << 8) | this->aa3;
+
+    /* Loookup our aircraft or create a new one. */
+    a = interactiveFindAircraft(addr);
+    if (!a) {
+        a = interactiveCreateAircraft(addr);
+        a->next = Modes.aircrafts;
+        Modes.aircrafts = a;
+    } else {
+        /* If it is an already known aircraft, move it on head
+         * so we keep aircrafts ordered by received bitf_message time.
+         *
+         * However move it on head only if at least one second elapsed
+         * since the aircraft that is currently on head sent a bitf_message,
+         * othewise with multiple aircrafts at the same time we have an
+         * useless shuffle of positions on the screen. */
+        if (0 && Modes.aircrafts != a && (time(NULL) - a->seen) >= 1) { // TODO: My IDE reports this as always false. Investigate.
+            aux = Modes.aircrafts;
+            while (aux->next != a) aux = aux->next;
+            /* Now we are a node before the aircraft to remove. */
+            aux->next = aux->next->next; /* removed. */
+            /* Add on head */
+            a->next = Modes.aircrafts;
+            Modes.aircrafts = a;
+        }
+    }
+
+    a->seen = time(NULL);
+    a->messages++;
+
+    if (this->msgtype == 0 || this->msgtype == 4 || this->msgtype == 20) {
+        a->altitude = this->altitude;
+    } else if (this->msgtype == 17) {
+        if (this->metype >= 1 && this->metype <= 4) {
+            memcpy(a->flight, this->flight, sizeof(a->flight));
+        } else if (this->metype >= 9 && this->metype <= 18) {
+            a->altitude = this->altitude;
+            if (this->fflag) {
+                a->odd_cprlat = this->raw_latitude;
+                a->odd_cprlon = this->raw_longitude;
+                a->odd_cprtime = mstime();
+            } else {
+                a->even_cprlat = this->raw_latitude;
+                a->even_cprlon = this->raw_longitude;
+                a->even_cprtime = mstime();
+            }
+            /* If the two data is less than 10 seconds apart, compute
+             * the position. */
+            if (abs(a->even_cprtime - a->odd_cprtime) <= 10000) {
+                decodeCPR(a);
+            }
+        } else if (this->metype == 19) {
+            if (this->mesub == 1 || this->mesub == 2) {
+                a->speed = this->velocity;
+                a->track = this->heading;
+            }
+        }
+    }
+    return a;
 }

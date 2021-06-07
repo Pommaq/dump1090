@@ -11,6 +11,9 @@
 
 /* The struct we use to store information about a decoded bitf_message. */
 struct modesMessage {
+private:
+    aircraft *interactiveReceiveData();
+public:
     modesMessage() = default;
     ~modesMessage() = default;
     modesMessage(unsigned char *msg);
