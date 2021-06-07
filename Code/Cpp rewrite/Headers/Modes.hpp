@@ -68,8 +68,10 @@
 void modesInitConfig(void);
 void modesInit(void);
 
-class g_settings {
+struct g_settings {
 public:
+    void modesInit();
+
     g_settings();
     ~g_settings();
     /* Internal state, intended to be shared among threads */
@@ -140,7 +142,7 @@ public:
 
 extern g_settings Modes;
 
-void modesInit(void);
+
 
 #endif //DUMP1090_MODES_HPP
 

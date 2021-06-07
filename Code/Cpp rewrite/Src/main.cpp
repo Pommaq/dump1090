@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
 
     /* Initialization */
 
-    modesInit();
+    Modes.modesInit();
     if (Modes.net_only) {
         fprintf(stderr, "Net-only mode, no RTL device or file open.\n");
     } else if (Modes.filename.empty()) {

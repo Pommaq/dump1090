@@ -14,7 +14,7 @@ g_settings Modes;
 
 
 
-void modesInit() {
+void g_settings::modesInit() {
     int i, q;
 
     /* We add a full bitf_message minus a final bit to the length, so that we
@@ -22,23 +22,23 @@ void modesInit() {
      * in the bitf_message detection loop, back at the start of the next data
      * to process. This way we are able to also detect messages crossing
      * two reads. */
-    Modes.data_len = MODES_DATA_LEN + (MODES_FULL_LEN - 1) * 4;
-    Modes.data_ready = 0;
+    this->data_len = MODES_DATA_LEN + (MODES_FULL_LEN - 1) * 4;
+    this->data_ready = 0;
     /* Allocate the ICAO address cache. We use two uint32_t for every
      * entry because it's a addr / timestamp pair for every entry. */
-    Modes.icao_cache = new uint32_t[MODES_ICAO_CACHE_LEN*2];
-    memset(Modes.icao_cache, 0, sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
-    Modes.aircrafts = nullptr;
-    Modes.interactive_last_update = 0;
+    this->icao_cache = new uint32_t[MODES_ICAO_CACHE_LEN*2];
+    memset(this->icao_cache, 0, sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
+    this->aircrafts = nullptr;
+    this->interactive_last_update = 0;
     try {
-        Modes.data = new unsigned char[Modes.data_len];
-        Modes.magnitude = new uint16_t[Modes.data_len];
+        this->data = new unsigned char[this->data_len];
+        this->magnitude = new uint16_t[this->data_len];
     }
     catch (std::bad_alloc){
         std::cerr << "Out of memory allocating data buffer." << std::endl;
         exit(1);
     }
-    memset(Modes.data, 127, Modes.data_len);
+    memset(this->data, 127, this->data_len);
     /* Populate the I/Q -> Magnitude lookup table. It is used because
      * sqrt or round may be expensive and may vary a lot depending on
      * the libc used.
@@ -46,29 +46,30 @@ void modesInit() {
      * We scale to 0-255 range multiplying by 1.4 in order to ensure that
      * every different I/Q pair will result in a different magnitude value,
      * not losing any resolution. */
-    Modes.maglut = new uint16_t[129*129];
+    this->maglut = new uint16_t[129*129];
             //malloc(129 * 129 * 2);
     for (i = 0; i <= 128; i++) {
         for (q = 0; q <= 128; q++) {
-            Modes.maglut[i * 129 + q] = round(sqrt(i * i + q * q) * 360);
+            this->maglut[i * 129 + q] = round(sqrt(i * i + q * q) * 360);
         }
     }
 
     /* Statistics */
-    Modes.stat_valid_preamble = 0;
-    Modes.stat_demodulated = 0;
-    Modes.stat_goodcrc = 0;
-    Modes.stat_badcrc = 0;
-    Modes.stat_fixed = 0;
-    Modes.stat_single_bit_fix = 0;
-    Modes.stat_two_bits_fix = 0;
-    Modes.stat_http_requests = 0;
-    Modes.stat_sbs_connections = 0;
-    Modes.stat_out_of_phase = 0;
-    Modes.exit = false;
+    this->stat_valid_preamble = 0;
+    this->stat_demodulated = 0;
+    this->stat_goodcrc = 0;
+    this->stat_badcrc = 0;
+    this->stat_fixed = 0;
+    this->stat_single_bit_fix = 0;
+    this->stat_two_bits_fix = 0;
+    this->stat_http_requests = 0;
+    this->stat_sbs_connections = 0;
+    this->stat_out_of_phase = 0;
+    this->exit = false;
 }
 
 g_settings::g_settings() {
+    /* Mutex to synchronize buffer access. */
     this->data_lock = new std::unique_lock<std::mutex>(mtx);
 
     /* Set sane defaults. */
@@ -91,8 +92,6 @@ g_settings::g_settings() {
     this->interactive_rows = getTermRows();
     this->loop = 0;
     this->html_file = P_FILE_GMAP;
-
-    /* Mutex to synchronize buffer access. */
 }
 
 g_settings::~g_settings() {
