@@ -12,27 +12,7 @@
 
 g_settings Modes;
 
-void modesInitConfig() {
-    Modes.gain = MODES_MAX_GAIN;
-    Modes.dev_index = 0;
-    Modes.enable_agc = 0;
-    Modes.freq = MODES_DEFAULT_FREQ;
-    Modes.filename = "";
-    Modes.fix_errors = 1;
-    Modes.check_crc = 1;
-    Modes.raw = 0;
-    Modes.net = 0;
-    Modes.net_only = 0;
-    Modes.onlyaddr = 0;
-    Modes.debug = 0;
-    Modes.interactive = 0;
-    Modes.interactive_rows = MODES_INTERACTIVE_ROWS;
-    Modes.interactive_ttl = MODES_INTERACTIVE_TTL;
-    Modes.aggressive = 0;
-    Modes.interactive_rows = getTermRows();
-    Modes.loop = 0;
-    Modes.html_file = P_FILE_GMAP;
-}
+
 
 void modesInit() {
     int i, q;
@@ -90,6 +70,28 @@ void modesInit() {
 
 g_settings::g_settings() {
     this->data_lock = new std::unique_lock<std::mutex>(mtx);
+
+    /* Set sane defaults. */
+    this->gain = MODES_MAX_GAIN;
+    this->dev_index = 0;
+    this->enable_agc = 0;
+    this->freq = MODES_DEFAULT_FREQ;
+    this->filename = "";
+    this->fix_errors = 1;
+    this->check_crc = 1;
+    this->raw = 0;
+    this->net = 0;
+    this->net_only = 0;
+    this->onlyaddr = 0;
+    this->debug = 0;
+    this->interactive = 0;
+    this->interactive_rows = MODES_INTERACTIVE_ROWS;
+    this->interactive_ttl = MODES_INTERACTIVE_TTL;
+    this->aggressive = 0;
+    this->interactive_rows = getTermRows();
+    this->loop = 0;
+    this->html_file = P_FILE_GMAP;
+
     /* Mutex to synchronize buffer access. */
 }
 

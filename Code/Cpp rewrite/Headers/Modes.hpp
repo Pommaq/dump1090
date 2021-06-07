@@ -140,7 +140,6 @@ public:
 
 extern g_settings Modes;
 
-void modesInitConfig();
 void modesInit(void);
 
 #endif //DUMP1090_MODES_HPP

@@ -99,9 +99,6 @@ bool eval(){
 int main(int argc, char **argv) {
     int j;
 
-    /* Set sane defaults. */
-    modesInitConfig();
-
     /* Parse the command line options */
     std::string argument;  // Using a string entity to make this mess slightly more readable
     for (j = 1; j < argc; j++) {
