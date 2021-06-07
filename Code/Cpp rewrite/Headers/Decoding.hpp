@@ -11,6 +11,9 @@
 
 /* The struct we use to store information about a decoded bitf_message. */
 struct modesMessage {
+    modesMessage() = default;
+    ~modesMessage() = default;
+    modesMessage(unsigned char *msg);
     /* Generic fields */
     unsigned char msg[MODES_LONG_MSG_BYTES]; /* Binary bitf_message. */
     int msgbits;                /* Number of bits in bitf_message */
@@ -101,8 +104,6 @@ int detectOutOfPhase(uint16_t const *m);
 void applyPhaseCorrection(uint16_t *m);
 
 void detectModeS(uint16_t *m, uint32_t mlen);
-
-void decodeModesMessage(struct modesMessage *mm, unsigned char *msg);
 
 int decodeAC13Field(unsigned char *msg, int *unit);
 
