@@ -386,60 +386,58 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         int low, high, delta, i, errors;
         int good_message = 0;
 
-        if (use_correction) goto good_preamble; /* We already checked it. */
+        if (!use_correction){ /* We already checked it. */
+            /* First check of relations between the first 10 samples
+             * representing a valid preamble. We don't even investigate further
+             * if this simple test is not passed. */
+            if (!(m[j] > m[j + 1] &&
+                  m[j + 1] < m[j + 2] &&
+                  m[j + 2] > m[j + 3] &&
+                  m[j + 3] < m[j] &&
+                  m[j + 4] < m[j] &&
+                  m[j + 5] < m[j] &&
+                  m[j + 6] < m[j] &&
+                  m[j + 7] > m[j + 8] &&
+                  m[j + 8] < m[j + 9] &&
+                  m[j + 9] > m[j + 6])) {
+                if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
+                    m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
+                    dumpRawMessage("Unexpected ratio among first 10 samples",
+                                   msg, m, j);
+                continue;
+            }
 
-        /* First check of relations between the first 10 samples
-         * representing a valid preamble. We don't even investigate further
-         * if this simple test is not passed. */
-        if (!(m[j] > m[j + 1] &&
-              m[j + 1] < m[j + 2] &&
-              m[j + 2] > m[j + 3] &&
-              m[j + 3] < m[j] &&
-              m[j + 4] < m[j] &&
-              m[j + 5] < m[j] &&
-              m[j + 6] < m[j] &&
-              m[j + 7] > m[j + 8] &&
-              m[j + 8] < m[j + 9] &&
-              m[j + 9] > m[j + 6])) {
-            if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
-                m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
-                dumpRawMessage("Unexpected ratio among first 10 samples",
-                               msg, m, j);
-            continue;
+            /* The samples between the two spikes must be < than the average
+             * of the high spikes level. We don't test bits too near to
+             * the high levels as signals can be out of phase so part of the
+             * energy can be in the near samples. */
+            high = (m[j] + m[j + 2] + m[j + 7] + m[j + 9]) / 6;
+            if (m[j + 4] >= high ||
+                m[j + 5] >= high) {
+                if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
+                    m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
+                    dumpRawMessage(
+                            "Too high level in samples between 3 and 6",
+                            msg, m, j);
+                continue;
+            }
+
+            /* Similarly samples in the range 11-14 must be low, as it is the
+             * space between the preamble and real data. Again we don't test
+             * bits too near to high levels, see above. */
+            if (m[j + 11] >= high ||
+                m[j + 12] >= high ||
+                m[j + 13] >= high ||
+                m[j + 14] >= high) {
+                if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
+                    m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
+                    dumpRawMessage(
+                            "Too high level in samples between 10 and 15",
+                            msg, m, j);
+                continue;
+            }
+            Modes.stat_valid_preamble++;
         }
-
-        /* The samples between the two spikes must be < than the average
-         * of the high spikes level. We don't test bits too near to
-         * the high levels as signals can be out of phase so part of the
-         * energy can be in the near samples. */
-        high = (m[j] + m[j + 2] + m[j + 7] + m[j + 9]) / 6;
-        if (m[j + 4] >= high ||
-            m[j + 5] >= high) {
-            if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
-                m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
-                dumpRawMessage(
-                        "Too high level in samples between 3 and 6",
-                        msg, m, j);
-            continue;
-        }
-
-        /* Similarly samples in the range 11-14 must be low, as it is the
-         * space between the preamble and real data. Again we don't test
-         * bits too near to high levels, see above. */
-        if (m[j + 11] >= high ||
-            m[j + 12] >= high ||
-            m[j + 13] >= high ||
-            m[j + 14] >= high) {
-            if (Modes.debug & MODES_DEBUG_NOPREAMBLE &&
-                m[j] > MODES_DEBUG_NOPREAMBLE_LEVEL)
-                dumpRawMessage(
-                        "Too high level in samples between 10 and 15",
-                        msg, m, j);
-            continue;
-        }
-        Modes.stat_valid_preamble++;
-
-        good_preamble:
         /* If the previous attempt with this bitf_message failed, retry using
          * magnitude correction. */
         if (use_correction) {

@@ -93,7 +93,7 @@ aircraft *interactiveReceiveData(modesMessage *mm) {
     uint32_t addr;
     aircraft *a, *aux;
 
-    if (Modes.check_crc && mm->crcok == 0) return NULL;
+    if (Modes.check_crc && mm->crcok == 0) return nullptr;
     addr = (mm->aa1 << 16) | (mm->aa2 << 8) | mm->aa3;
 
     /* Loookup our aircraft or create a new one. */

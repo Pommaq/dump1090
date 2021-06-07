@@ -181,7 +181,7 @@ int main(int argc, char **argv) {
             }
         } else if (argument == "--stats") {
             Modes.stats = 1;
-        } else if (argument == "--html_file" && more) {
+        } else if (argument == "--html-file" && more) {
             Modes.html_file = argv[++j];
         } else if (argument == "--snip" && more) {
             snipMode(atoi(argv[++j]));

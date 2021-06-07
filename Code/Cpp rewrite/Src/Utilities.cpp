@@ -22,7 +22,7 @@ void showHelp() {
               "--net-ri-port <port>     TCP listening port for raw input (default: 30001).\n"
               "--net-http-port <port>   HTTP server port (default: 8080).\n"
               "--net-sbs-port <port>    TCP listening port for BaseStation format bitf_output (default: 30003).\n"
-              "--html_file              With --net, sets path to HTML file we serve clients with\n"
+              "--html-file              With --net, sets path to HTML file we serve clients with\n"
               "--no-fix                 Disable single-bits error correction using CRC.\n"
               "--no-crc-check           Disable messages with broken CRC (discouraged).\n"
               "--aggressive             More CPU for more messages (two bits fixes, ...).\n"
