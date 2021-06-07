@@ -162,7 +162,7 @@ void displayModesMessage(modesMessage *mm) {
         /* Decode the extended squitter bitf_message. */
         if (mm->metype >= 1 && mm->metype <= 4) {
             /* Aircraft identification. */
-            char *ac_type_str[4] = {
+            const char *ac_type_str[4] = {
                     "Aircraft Type D",
                     "Aircraft Type C",
                     "Aircraft Type B",

@@ -70,7 +70,7 @@ void modesInit(void);
 
 struct g_settings {
 public:
-    void modesInit();
+    int modesInit();
 
     g_settings();
     ~g_settings();

@@ -14,7 +14,7 @@ g_settings Modes;
 
 
 
-void g_settings::modesInit() {
+int g_settings::modesInit() {
     int i, q;
 
     /* We add a full bitf_message minus a final bit to the length, so that we
@@ -36,7 +36,7 @@ void g_settings::modesInit() {
     }
     catch (std::bad_alloc){
         std::cerr << "Out of memory allocating data buffer." << std::endl;
-        exit(1);
+        return(1);
     }
     memset(this->data, 127, this->data_len);
     /* Populate the I/Q -> Magnitude lookup table. It is used because
@@ -66,6 +66,7 @@ void g_settings::modesInit() {
     this->stat_sbs_connections = 0;
     this->stat_out_of_phase = 0;
     this->exit = false;
+    return 0;
 }
 
 g_settings::g_settings() {
