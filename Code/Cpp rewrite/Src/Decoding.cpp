@@ -13,7 +13,24 @@
 #include "../Headers/modesMessage.h"
 
 /* ===================== Mode S detection and decoding  ===================== */
-
+/* Parity table for MODE S Messages.
+ * The table contains 112 elements, every element corresponds to a bit set
+ * in the bitf_message, starting from the first bit of actual data after the
+ * preamble.
+ *
+ * For messages of 112 bit, the whole table is used.
+ * For messages of 56 bits only the last 56 elements are used.
+ *
+ * The algorithm is as simple as xoring all the elements in this table
+ * for which the corresponding bit on the bitf_message is set to 1.
+ *
+ * The latest 24 elements in this table are set to 0 as the checksum at the
+ * end of the bitf_message should not affect the computation.
+ *
+ * Note: this function can be used with DF11 and DF17, other modes have
+ * the CRC xored with the sender address as they are reply to interrogations,
+ * but a casual listener can't split the address from the checksum.
+ */
 uint32_t modes_checksum_table[112] = {
         0x3935ea, 0x1c9af5, 0xf1b77e, 0x78dbbf, 0xc397db, 0x9e31e9, 0xb0e2f0, 0x587178,
         0x2c38bc, 0x161c5e, 0x0b0e2f, 0xfa7d13, 0x82c48d, 0xbe9842, 0x5f4c21, 0xd05c14,
