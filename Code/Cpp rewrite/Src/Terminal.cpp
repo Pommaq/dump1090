@@ -11,6 +11,8 @@
 #include <sys/ioctl.h>
 #include <cstring>
 #include <iostream>
+#include <map>
+#include <iterator>
 
 /* ============================ Terminal handling  ========================== */
 
@@ -57,7 +59,6 @@ int getTermRows() {
 
 /* Show the currently captured interactive data on screen. */
 void interactiveShowData() {
-    struct aircraft *a = Modes.aircrafts;
     time_t now = time(nullptr);
     char progress[4];
     int count = 0;
@@ -72,7 +73,10 @@ void interactiveShowData() {
               << progress << "\n--------------------------------------------------------------------------------"
               << std::endl;
 
-    while (a && count < Modes.interactive_rows) {
+    struct aircraft *a = nullptr;
+    auto it = Modes.aircrafts.begin();
+    while (it != Modes.aircrafts.end() && count < Modes.interactive_rows) {
+        a = it->second;
         int altitude = a->altitude, speed = a->speed;
 
         /* Convert units to metric if --metric was specified. */
@@ -85,7 +89,7 @@ void interactiveShowData() {
                a->hexaddr, a->flight, altitude, speed,
                a->lat, a->lon, a->track, a->messages,
                (int) (now - a->seen));
-        a = a->next;
+        it++;
         count++;
     }
 }

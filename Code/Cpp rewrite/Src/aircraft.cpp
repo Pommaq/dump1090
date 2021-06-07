@@ -3,6 +3,7 @@
 //
 
 #include <cstring>
+#include <vector>
 #include "../Headers/aircraft.hpp"
 #include "../Headers/Modes.hpp"
 #include "../Headers/Decoding.hpp"
@@ -10,7 +11,7 @@
 
 /* Return a description of planes in json. */
 char *aircraftsToJson(int *len) {
-    aircraft *a = Modes.aircrafts;
+    aircraft *a = nullptr;
     int buflen = 1024; /* The initial buffer is incremented as needed. */
     char *buf = new char[buflen];
     char *p = buf;
@@ -19,7 +20,10 @@ char *aircraftsToJson(int *len) {
     l = snprintf(p, buflen, "[\n");
     p += l;
     buflen -= l;
-    while (a) {
+
+    auto it = Modes.aircrafts.begin();
+    while (it != Modes.aircrafts.end()) {
+        a = it->second;
         int altitude = a->altitude, speed = a->speed;
 
         /* Convert units to metric if --metric was specified. */
@@ -45,7 +49,7 @@ char *aircraftsToJson(int *len) {
                 p = buf + used;
             }
         }
-        a = a->next;
+        it++;
     }
     /* Remove the final comma if any, and closes the json array. */
     if (*(p - 2) == ',') {
@@ -65,25 +69,22 @@ char *aircraftsToJson(int *len) {
 /* When in interactive mode If we don't receive new nessages within
  * MODES_INTERACTIVE_TTL seconds we remove the aircraft from the list. */
 void interactiveRemoveStaleAircrafts() {
-    struct aircraft *a = Modes.aircrafts;
     struct aircraft *prev = NULL;
     time_t now = time(NULL);
 
-    while (a) {
-        if ((now - a->seen) > Modes.interactive_ttl) {
-            struct aircraft *next = a->next;
-            /* Remove the element from the linked list, with care
-             * if we are removing the first element. */
-            free(a);
-            if (!prev)
-                Modes.aircrafts = next;
-            else
-                prev->next = next;
-            a = next;
-        } else {
-            prev = a;
-            a = a->next;
+    struct aircraft* a = nullptr;
+    std::vector<std::pair<int, aircraft*>> to_erase;
+    auto it = Modes.aircrafts.begin();
+    while (it != Modes.aircrafts.begin()){
+        if ((now - it->second->seen) > Modes.interactive_ttl) {
+            /* Remove the element*/
+            to_erase.emplace_back(*it);
         }
+        it++;
+    }
+    for (auto &pair: to_erase){
+        delete pair.second;
+        Modes.aircrafts.erase(pair.first);
     }
 }
 
@@ -91,13 +92,14 @@ void interactiveRemoveStaleAircrafts() {
 /* Return the aircraft with the specified address, or NULL if no aircraft
  * exists with this address. */
 aircraft *interactiveFindAircraft(uint32_t addr) {
-    struct aircraft *a = Modes.aircrafts;
-
-    while (a) {
-        if (a->addr == addr) return a;
-        a = a->next;
+    auto ret =  Modes.aircrafts.find(addr);
+    if (ret != Modes.aircrafts.end()){
+        return ret->second;
     }
-    return nullptr;
+    else{
+        return nullptr;
+    }
+
 }
 
 

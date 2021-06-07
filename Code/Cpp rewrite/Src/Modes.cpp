@@ -28,7 +28,6 @@ int g_settings::modesInit() {
      * entry because it's a addr / timestamp pair for every entry. */
     this->icao_cache = new uint32_t[MODES_ICAO_CACHE_LEN*2];
     memset(this->icao_cache, 0, sizeof(uint32_t) * MODES_ICAO_CACHE_LEN * 2);
-    this->aircrafts = nullptr;
     this->interactive_last_update = 0;
     try {
         this->data = new unsigned char[this->data_len];

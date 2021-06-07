@@ -962,7 +962,7 @@ void modesMessage::updatePlanes() {
         /* Track aircrafts in interactive mode or if the HTTP
          * interface is enabled. */
         if (Modes.interactive || Modes.stat_http_requests > 0 || Modes.stat_sbs_connections > 0) {
-            struct aircraft *a = interactiveReceiveData(this);
+            struct aircraft *a = this->interactiveReceiveData();
             if (a && Modes.stat_sbs_connections > 0) modesSendSBSOutput(this, a);  /* Feed SBS bitf_output clients. */
         }
         /* In non-interactive way, display messages on standard bitf_output. */
@@ -989,25 +989,7 @@ aircraft *modesMessage::interactiveReceiveData() {
     a = interactiveFindAircraft(addr);
     if (!a) {
         a = interactiveCreateAircraft(addr);
-        a->next = Modes.aircrafts;
-        Modes.aircrafts = a;
-    } else {
-        /* If it is an already known aircraft, move it on head
-         * so we keep aircrafts ordered by received bitf_message time.
-         *
-         * However move it on head only if at least one second elapsed
-         * since the aircraft that is currently on head sent a bitf_message,
-         * othewise with multiple aircrafts at the same time we have an
-         * useless shuffle of positions on the screen. */
-        if (0 && Modes.aircrafts != a && (time(NULL) - a->seen) >= 1) { // TODO: My IDE reports this as always false. Investigate.
-            aux = Modes.aircrafts;
-            while (aux->next != a) aux = aux->next;
-            /* Now we are a node before the aircraft to remove. */
-            aux->next = aux->next->next; /* removed. */
-            /* Add on head */
-            a->next = Modes.aircrafts;
-            Modes.aircrafts = a;
-        }
+        Modes.aircrafts.insert(std::pair<int, aircraft*>(addr, a));
     }
 
     a->seen = time(NULL);

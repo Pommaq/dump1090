@@ -59,8 +59,10 @@
 #include <fstream>
 #include <memory>
 #include <rtl-sdr.h>
+#include <map>
 #include "anet.hpp"
 #include "data_reader.hpp"
+#include "aircraft.hpp"
 
 
 /* =============================== Initialization =========================== */
@@ -123,7 +125,8 @@ public:
     int aggressive;                 /* Aggressive detection algorithm. */
 
     /* Interactive mode */
-    struct aircraft *aircrafts;
+    std::map<int, aircraft*> aircrafts;
+    //struct aircraft *aircrafts;
     long long interactive_last_update;  /* Last screen update in milliseconds */
 
     /* Statistics */
