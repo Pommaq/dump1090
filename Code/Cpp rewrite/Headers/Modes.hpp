@@ -75,7 +75,6 @@ public:
     g_settings();
     ~g_settings();
     /* Internal state, intended to be shared among threads */
-    std::thread reader_thread;
     std::mutex mtx;
     std::unique_lock<std::mutex>* data_lock;     /* Mutex to synchronize buffer access. */
     std::condition_variable data_cond;       /* Will cause threads to block when 0 and start when "upped" */

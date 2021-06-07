@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
 
 
     /* Create the thread that will read the data from the device. */
-    Modes.reader_thread = std::thread(readerThreadEntryPoint, nullptr);
+    std::thread reader_thread = std::thread(readerThreadEntryPoint, nullptr);
     for (int i = 0; i < 1000; i++); // Give the 2nd thread some time to reach its first lock
     while (!Modes.exit) {
         if (!Modes.data_ready) {
@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
         std::cout << Modes.stat_two_bits_fix << " two bit errors" << std::endl;
         std::cout << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
     }
-    Modes.reader_thread.join();
+    reader_thread.join();
     rtlsdr_close(Modes.dev);
     return 0;
 }
