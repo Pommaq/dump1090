@@ -86,7 +86,6 @@ int decodeHexMessage(struct client *c) {
     char *hex = c->buf;
     int l = strlen(hex), j;
     unsigned char msg[MODES_LONG_MSG_BYTES];
-    modesMessage mm;
 
     /* Remove spaces on the left and on the right. */
     while (l && isspace(hex[l - 1])) {
@@ -110,8 +109,8 @@ int decodeHexMessage(struct client *c) {
         if (high == -1 || low == -1) return 0;
         msg[j / 2] = (high << 4) | low;
     }
-    decodeModesMessage(&mm, msg);
-    useModesMessage(&mm);
+    modesMessage mm(msg);
+    mm.updatePlanes();
     return 0;
 }
 
@@ -245,33 +244,6 @@ void decodeCPR(aircraft *a) {
     if (a->lon > 180) a->lon -= 360;
 }
 
-/* When a new bitf_message is available, because it was decoded from the
- * RTL device, file, or received in the TCP input port, or any other
- * way we can receive a decoded bitf_message, we call this function in order
- * to use the bitf_message.
- *
- * Basically this function passes a raw bitf_message to the upper layers for
- * further processing and visualization. */
-void useModesMessage(modesMessage *mm) {
-    if (!Modes.stats && (Modes.check_crc == 0 || mm->crcok)) {
-        /* Track aircrafts in interactive mode or if the HTTP
-         * interface is enabled. */
-        if (Modes.interactive || Modes.stat_http_requests > 0 || Modes.stat_sbs_connections > 0) {
-            struct aircraft *a = interactiveReceiveData(mm);
-            if (a && Modes.stat_sbs_connections > 0) modesSendSBSOutput(mm, a);  /* Feed SBS bitf_output clients. */
-        }
-        /* In non-interactive way, display messages on standard bitf_output. */
-        if (!Modes.interactive) {
-            displayModesMessage(mm);
-            if (!Modes.raw && !Modes.onlyaddr) printf("\n");
-        }
-        /* Send data to connected clients. */
-        if (Modes.net) {
-            modesSendRawOutput(mm);  /* Feed raw bitf_output clients. */
-        }
-    }
-}
-
 
 /* Turn I/Q samples pointed by Modes.data into the magnitude vector
  * pointed by Modes.magnitude. */
@@ -386,7 +358,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         int low, high, delta, i, errors;
         int good_message = 0;
 
-        if (!use_correction){ /* We already checked it. */
+        if (!use_correction) { /* We already checked it. */
             /* First check of relations between the first 10 samples
              * representing a valid preamble. We don't even investigate further
              * if this simple test is not passed. */
@@ -515,10 +487,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
          * with a Mode S bitf_message in our hands, but it may still be broken
          * and CRC may not be correct. This is handled by the next layer. */
         if (errors == 0 || (Modes.aggressive && errors < 3)) {
-            struct modesMessage mm;
 
             /* Decode the received bitf_message and update statistics */
-            decodeModesMessage(&mm, msg);
+            modesMessage mm(msg);
 
             /* Update statistics. */
             if (mm.crcok || use_correction) {
@@ -560,7 +531,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
             }
 
             /* Pass data to the next layer */
-            useModesMessage(&mm);
+            mm.updatePlanes();
         } else {
             if (Modes.debug & MODES_DEBUG_DEMODERR && use_correction) {
                 printf("The following bitf_message has %d demod errors\n", errors);
@@ -578,192 +549,6 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
     }
 }
 
-/* Decode a raw Mode S bitf_message demodulated as a stream of bytes by
-        * detectModeS(), and split it into fields populating a modesMessage
-* structure. */
-void decodeModesMessage(struct modesMessage *mm, unsigned char *msg) {
-    uint32_t crc2;   /* Computed CRC, used to verify the bitf_message CRC. */
-    const char *ais_charset = "?ABCDEFGHIJKLMNOPQRSTUVWXYZ????? ???????????????0123456789??????";
-
-    /* Work on our local copy */
-    memcpy(mm->msg, msg, MODES_LONG_MSG_BYTES);
-    msg = mm->msg;
-
-    /* Get the bitf_message type ASAP as other operations depend on this */
-    mm->msgtype = msg[0] >> 3;    /* Downlink Format */
-    mm->msgbits = modesMessageLenByType(mm->msgtype);
-
-    /* CRC is always the last three bytes. */
-    mm->crc = ((uint32_t) msg[(mm->msgbits / 8) - 3] << 16) |
-              ((uint32_t) msg[(mm->msgbits / 8) - 2] << 8) |
-              (uint32_t) msg[(mm->msgbits / 8) - 1];
-    crc2 = modesChecksum(msg, mm->msgbits);
-
-    /* Check CRC and fix single bit errors using the CRC when
-     * possible (DF 11 and 17). */
-    mm->errorbit = -1;  /* No error */
-    mm->crcok = (mm->crc == crc2);
-
-    if (!mm->crcok && Modes.fix_errors &&
-        (mm->msgtype == 11 || mm->msgtype == 17)) {
-        if ((mm->errorbit = fixSingleBitErrors(msg, mm->msgbits)) != -1) {
-            if (mm->errorbit == -2) {
-                exit(EXIT_FAILURE);
-            }
-            mm->crc = modesChecksum(msg, mm->msgbits);
-            mm->crcok = 1;
-        } else if (Modes.aggressive && mm->msgtype == 17 &&
-                   (mm->errorbit = fixTwoBitsErrors(msg, mm->msgbits)) != -1) {
-            mm->crc = modesChecksum(msg, mm->msgbits);
-            mm->crcok = 1;
-        }
-    }
-
-    /* Note that most of the other computation happens *after* we fix
-     * the single bit errors, otherwise we would need to recompute the
-     * fields again. */
-    mm->ca = msg[0] & 7;        /* Responder capabilities. */
-
-    /* ICAO address */
-    mm->aa1 = msg[1];
-    mm->aa2 = msg[2];
-    mm->aa3 = msg[3];
-
-    /* DF 17 type (assuming this is a DF17, otherwise not used) */
-    mm->metype = msg[4] >> 3;   /* Extended squitter bitf_message type. */
-    mm->mesub = msg[4] & 7;     /* Extended squitter bitf_message subtype. */
-
-    /* Fields for DF4,5,20,21 */
-    mm->fs = msg[0] & 7;        /* Flight status for DF4,5,20,21 */
-    mm->dr = msg[1] >> 3 & 31;  /* Request extraction of downlink request. */
-    mm->um = ((msg[1] & 7) << 3) | /* Request extraction of downlink request. */
-             msg[2] >> 5;
-
-    /* In the squawk (identity) field bits are interleaved like that
-     * (bitf_message bit 20 to bit 32):
-     *
-     * C1-A1-C2-A2-C4-A4-ZERO-B1-D1-B2-D2-B4-D4
-     *
-     * So every group of three bits A, B, C, D represent an integer
-     * from 0 to 7.
-     *
-     * The actual meaning is just 4 octal numbers, but we convert it
-     * into a base ten number tha happens to represent the four
-     * octal numbers.
-     *
-     * For more info: http://en.wikipedia.org/wiki/Gillham_code */
-    {
-        int a, b, c, d;
-
-        a = ((msg[3] & 0x80) >> 5) |
-            ((msg[2] & 0x02) >> 0) |
-            ((msg[2] & 0x08) >> 3);
-        b = ((msg[3] & 0x02) << 1) |
-            ((msg[3] & 0x08) >> 2) |
-            ((msg[3] & 0x20) >> 5);
-        c = ((msg[2] & 0x01) << 2) |
-            ((msg[2] & 0x04) >> 1) |
-            ((msg[2] & 0x10) >> 4);
-        d = ((msg[3] & 0x01) << 2) |
-            ((msg[3] & 0x04) >> 1) |
-            ((msg[3] & 0x10) >> 4);
-        mm->identity = a * 1000 + b * 100 + c * 10 + d;
-    }
-
-    /* DF 11 & 17: try to populate our ICAO addresses whitelist.
-     * DFs with an AP field (xored addr and crc), try to decode it. */
-    if (mm->msgtype != 11 && mm->msgtype != 17) {
-        /* Check if we can check the checksum for the Downlink Formats where
-         * the checksum is xored with the aircraft ICAO address. We try to
-         * brute force it using a list of recently seen aircraft addresses. */
-        if (bruteForceAP(msg, mm)) {
-            /* We recovered the bitf_message, mark the checksum as valid. */
-            mm->crcok = 1;
-        } else {
-            mm->crcok = 0;
-        }
-    } else {
-        /* If this is DF 11 or DF 17 and the checksum was ok,
-         * we can add this address to the list of recently seen
-         * addresses. */
-        if (mm->crcok && mm->errorbit == -1) {
-            uint32_t addr = (mm->aa1 << 16) | (mm->aa2 << 8) | mm->aa3;
-            addRecentlySeenICAOAddr(addr);
-        }
-    }
-
-    /* Decode 13 bit altitude for DF0, DF4, DF16, DF20 */
-    if (mm->msgtype == 0 || mm->msgtype == 4 ||
-        mm->msgtype == 16 || mm->msgtype == 20) {
-        mm->altitude = decodeAC13Field(msg, &mm->unit);
-    }
-
-    /* Decode extended squitter specific stuff. */
-    if (mm->msgtype == 17) {
-        /* Decode the extended squitter bitf_message. */
-
-        if (mm->metype >= 1 && mm->metype <= 4) {
-            /* Aircraft Identification and Category */
-            mm->aircraft_type = mm->metype - 1;
-            mm->flight[0] = ais_charset[msg[5] >> 2];
-            mm->flight[1] = ais_charset[((msg[5] & 3) << 4) | (msg[6] >> 4)];
-            mm->flight[2] = ais_charset[((msg[6] & 15) << 2) | (msg[7] >> 6)];
-            mm->flight[3] = ais_charset[msg[7] & 63];
-            mm->flight[4] = ais_charset[msg[8] >> 2];
-            mm->flight[5] = ais_charset[((msg[8] & 3) << 4) | (msg[9] >> 4)];
-            mm->flight[6] = ais_charset[((msg[9] & 15) << 2) | (msg[10] >> 6)];
-            mm->flight[7] = ais_charset[msg[10] & 63];
-            mm->flight[8] = '\0';
-        } else if (mm->metype >= 9 && mm->metype <= 18) {
-            /* Airborne position Message */
-            mm->fflag = msg[6] & (1 << 2);
-            mm->tflag = msg[6] & (1 << 3);
-            mm->altitude = decodeAC12Field(msg, &mm->unit);
-            mm->raw_latitude = ((msg[6] & 3) << 15) |
-                               (msg[7] << 7) |
-                               (msg[8] >> 1);
-            mm->raw_longitude = ((msg[8] & 1) << 16) |
-                                (msg[9] << 8) |
-                                msg[10];
-        } else if (mm->metype == 19 && mm->mesub >= 1 && mm->mesub <= 4) {
-            /* Airborne Velocity Message */
-            if (mm->mesub == 1 || mm->mesub == 2) {
-                mm->ew_dir = (msg[5] & 4) >> 2;
-                mm->ew_velocity = ((msg[5] & 3) << 8) | msg[6];
-                mm->ns_dir = (msg[7] & 0x80) >> 7;
-                mm->ns_velocity = ((msg[7] & 0x7f) << 3) | ((msg[8] & 0xe0) >> 5);
-                mm->vert_rate_source = (msg[8] & 0x10) >> 4;
-                mm->vert_rate_sign = (msg[8] & 0x8) >> 3;
-                mm->vert_rate = ((msg[8] & 7) << 6) | ((msg[9] & 0xfc) >> 2);
-                /* Compute velocity and angle from the two speed
-                 * components. */
-                mm->velocity = sqrt(mm->ns_velocity * mm->ns_velocity +
-                                    mm->ew_velocity * mm->ew_velocity);
-                if (mm->velocity) {
-                    int ewv = mm->ew_velocity;
-                    int nsv = mm->ns_velocity;
-                    double heading;
-
-                    if (mm->ew_dir) ewv *= -1;
-                    if (mm->ns_dir) nsv *= -1;
-                    heading = atan2(ewv, nsv);
-
-                    /* Convert to degrees. */
-                    mm->heading = heading * 360 / (M_PI * 2);
-                    /* We don't want negative values but a 0-360 scale. */
-                    if (mm->heading < 0) mm->heading += 360;
-                } else {
-                    mm->heading = 0;
-                }
-            } else if (mm->mesub == 3 || mm->mesub == 4) {
-                mm->heading_is_valid = msg[5] & (1 << 2);
-                mm->heading = (360.0 / 128) * (((msg[5] & 3) << 5) |
-                                               (msg[6] >> 3));
-            }
-        }
-    }
-    mm->phase_corrected = 0; /* Set to 1 by the caller if needed. */
-}
 
 /* Decode the 13 bit AC altitude field (in DF 20 and others).
  * Returns the altitude, and set 'unit' to either MODES_UNIT_METERS
@@ -935,7 +720,6 @@ int ICAOAddressWasRecentlySeen(uint32_t addr) {
  * If the function successfully recovers a bitf_message with a correct checksum
  * it returns 1. Otherwise 0 is returned. */
 int bruteForceAP(unsigned char *msg, struct modesMessage *mm) {
-    // TODO: Consider running this on GPU
     unsigned char aux[MODES_LONG_MSG_BYTES];
     int msgtype = mm->msgtype;
     int msgbits = mm->msgbits;
@@ -977,3 +761,217 @@ int bruteForceAP(unsigned char *msg, struct modesMessage *mm) {
     return 0;
 }
 
+/* Decode a raw Mode S bitf_message demodulated as a stream of bytes by
+ * detectModeS(), and split it into fields populating a modesMessage
+ * structure. */
+modesMessage::modesMessage(unsigned char *msg) {
+
+    uint32_t crc2;   /* Computed CRC, used to verify the bitf_message CRC. */
+    const char *ais_charset = "?ABCDEFGHIJKLMNOPQRSTUVWXYZ????? ???????????????0123456789??????";
+
+    /* Work on our local copy */
+    memcpy(this->msg, msg, MODES_LONG_MSG_BYTES);
+    msg = this->msg;
+
+    /* Get the bitf_message type ASAP as other operations depend on this */
+    this->msgtype = msg[0] >> 3;    /* Downlink Format */
+    this->msgbits = modesMessageLenByType(this->msgtype);
+
+    /* CRC is always the last three bytes. */
+    this->crc = ((uint32_t) msg[(this->msgbits / 8) - 3] << 16) |
+                ((uint32_t) msg[(this->msgbits / 8) - 2] << 8) |
+                (uint32_t) msg[(this->msgbits / 8) - 1];
+    crc2 = modesChecksum(msg, this->msgbits);
+
+    /* Check CRC and fix single bit errors using the CRC when
+     * possible (DF 11 and 17). */
+    this->errorbit = -1;  /* No error */
+    this->crcok = (this->crc == crc2);
+
+    if (!this->crcok && Modes.fix_errors &&
+        (this->msgtype == 11 || this->msgtype == 17)) {
+        if ((this->errorbit = fixSingleBitErrors(msg, this->msgbits)) != -1) {
+            if (this->errorbit == -2) {
+                exit(EXIT_FAILURE);
+            }
+            this->crc = modesChecksum(msg, this->msgbits);
+            this->crcok = 1;
+        } else if (Modes.aggressive && this->msgtype == 17 &&
+                   (this->errorbit = fixTwoBitsErrors(msg, this->msgbits)) != -1) {
+            this->crc = modesChecksum(msg, this->msgbits);
+            this->crcok = 1;
+        }
+    }
+
+    /* Note that most of the other computation happens *after* we fix
+     * the single bit errors, otherwise we would need to recompute the
+     * fields again. */
+    this->ca = msg[0] & 7;        /* Responder capabilities. */
+
+    /* ICAO address */
+    this->aa1 = msg[1];
+    this->aa2 = msg[2];
+    this->aa3 = msg[3];
+
+    /* DF 17 type (assuming this is a DF17, otherwise not used) */
+    this->metype = msg[4] >> 3;   /* Extended squitter bitf_message type. */
+    this->mesub = msg[4] & 7;     /* Extended squitter bitf_message subtype. */
+
+    /* Fields for DF4,5,20,21 */
+    this->fs = msg[0] & 7;        /* Flight status for DF4,5,20,21 */
+    this->dr = msg[1] >> 3 & 31;  /* Request extraction of downlink request. */
+    this->um = ((msg[1] & 7) << 3) | /* Request extraction of downlink request. */
+               msg[2] >> 5;
+
+    /* In the squawk (identity) field bits are interleaved like that
+     * (bitf_message bit 20 to bit 32):
+     *
+     * C1-A1-C2-A2-C4-A4-ZERO-B1-D1-B2-D2-B4-D4
+     *
+     * So every group of three bits A, B, C, D represent an integer
+     * from 0 to 7.
+     *
+     * The actual meaning is just 4 octal numbers, but we convert it
+     * into a base ten number tha happens to represent the four
+     * octal numbers.
+     *
+     * For more info: http://en.wikipedia.org/wiki/Gillham_code */
+    {
+        int a, b, c, d;
+
+        a = ((msg[3] & 0x80) >> 5) |
+            ((msg[2] & 0x02) >> 0) |
+            ((msg[2] & 0x08) >> 3);
+        b = ((msg[3] & 0x02) << 1) |
+            ((msg[3] & 0x08) >> 2) |
+            ((msg[3] & 0x20) >> 5);
+        c = ((msg[2] & 0x01) << 2) |
+            ((msg[2] & 0x04) >> 1) |
+            ((msg[2] & 0x10) >> 4);
+        d = ((msg[3] & 0x01) << 2) |
+            ((msg[3] & 0x04) >> 1) |
+            ((msg[3] & 0x10) >> 4);
+        this->identity = a * 1000 + b * 100 + c * 10 + d;
+    }
+
+    /* DF 11 & 17: try to populate our ICAO addresses whitelist.
+     * DFs with an AP field (xored addr and crc), try to decode it. */
+    if (this->msgtype != 11 && this->msgtype != 17) {
+        /* Check if we can check the checksum for the Downlink Formats where
+         * the checksum is xored with the aircraft ICAO address. We try to
+         * brute force it using a list of recently seen aircraft addresses. */
+        if (bruteForceAP(msg, this)) {
+            /* We recovered the bitf_message, mark the checksum as valid. */
+            this->crcok = 1;
+        } else {
+            this->crcok = 0;
+        }
+    } else {
+        /* If this is DF 11 or DF 17 and the checksum was ok,
+         * we can add this address to the list of recently seen
+         * addresses. */
+        if (this->crcok && this->errorbit == -1) {
+            uint32_t addr = (this->aa1 << 16) | (this->aa2 << 8) | this->aa3;
+            addRecentlySeenICAOAddr(addr);
+        }
+    }
+
+    /* Decode 13 bit altitude for DF0, DF4, DF16, DF20 */
+    if (this->msgtype == 0 || this->msgtype == 4 ||
+        this->msgtype == 16 || this->msgtype == 20) {
+        this->altitude = decodeAC13Field(msg, &this->unit);
+    }
+
+    /* Decode extended squitter specific stuff. */
+    if (this->msgtype == 17) {
+        /* Decode the extended squitter bitf_message. */
+
+        if (this->metype >= 1 && this->metype <= 4) {
+            /* Aircraft Identification and Category */
+            this->aircraft_type = this->metype - 1;
+            this->flight[0] = ais_charset[msg[5] >> 2];
+            this->flight[1] = ais_charset[((msg[5] & 3) << 4) | (msg[6] >> 4)];
+            this->flight[2] = ais_charset[((msg[6] & 15) << 2) | (msg[7] >> 6)];
+            this->flight[3] = ais_charset[msg[7] & 63];
+            this->flight[4] = ais_charset[msg[8] >> 2];
+            this->flight[5] = ais_charset[((msg[8] & 3) << 4) | (msg[9] >> 4)];
+            this->flight[6] = ais_charset[((msg[9] & 15) << 2) | (msg[10] >> 6)];
+            this->flight[7] = ais_charset[msg[10] & 63];
+            this->flight[8] = '\0';
+        } else if (this->metype >= 9 && this->metype <= 18) {
+            /* Airborne position Message */
+            this->fflag = msg[6] & (1 << 2);
+            this->tflag = msg[6] & (1 << 3);
+            this->altitude = decodeAC12Field(msg, &this->unit);
+            this->raw_latitude = ((msg[6] & 3) << 15) |
+                                 (msg[7] << 7) |
+                                 (msg[8] >> 1);
+            this->raw_longitude = ((msg[8] & 1) << 16) |
+                                  (msg[9] << 8) |
+                                  msg[10];
+        } else if (this->metype == 19 && this->mesub >= 1 && this->mesub <= 4) {
+            /* Airborne Velocity Message */
+            if (this->mesub == 1 || this->mesub == 2) {
+                this->ew_dir = (msg[5] & 4) >> 2;
+                this->ew_velocity = ((msg[5] & 3) << 8) | msg[6];
+                this->ns_dir = (msg[7] & 0x80) >> 7;
+                this->ns_velocity = ((msg[7] & 0x7f) << 3) | ((msg[8] & 0xe0) >> 5);
+                this->vert_rate_source = (msg[8] & 0x10) >> 4;
+                this->vert_rate_sign = (msg[8] & 0x8) >> 3;
+                this->vert_rate = ((msg[8] & 7) << 6) | ((msg[9] & 0xfc) >> 2);
+                /* Compute velocity and angle from the two speed
+                 * components. */
+                this->velocity = sqrt(this->ns_velocity * this->ns_velocity +
+                                      this->ew_velocity * this->ew_velocity);
+                if (this->velocity) {
+                    int ewv = this->ew_velocity;
+                    int nsv = this->ns_velocity;
+                    double direction;
+
+                    if (this->ew_dir) ewv *= -1;
+                    if (this->ns_dir) nsv *= -1;
+                    direction = atan2(ewv, nsv);
+
+                    /* Convert to degrees. */
+                    this->heading = direction * 360 / (M_PI * 2);
+                    /* We don't want negative values but a 0-360 scale. */
+                    if (this->heading < 0) this->heading += 360;
+                } else {
+                    this->heading = 0;
+                }
+            } else if (this->mesub == 3 || this->mesub == 4) {
+                this->heading_is_valid = msg[5] & (1 << 2);
+                this->heading = (360.0 / 128) * (((msg[5] & 3) << 5) |
+                                                 (msg[6] >> 3));
+            }
+        }
+    }
+    this->phase_corrected = 0; /* Set to 1 by the caller if needed. */
+}
+
+/* When a new bitf_message is available, because it was decoded from the
+ * RTL device, file, or received in the TCP input port, or any other
+ * way we can receive a decoded bitf_message, we call this function in order
+ * to use the bitf_message.
+ *
+ * Basically this function passes a raw bitf_message to the upper layers for
+ * further processing and visualization. */
+void modesMessage::updatePlanes() {
+    if (!Modes.stats && (Modes.check_crc == 0 || this->crcok)) {
+        /* Track aircrafts in interactive mode or if the HTTP
+         * interface is enabled. */
+        if (Modes.interactive || Modes.stat_http_requests > 0 || Modes.stat_sbs_connections > 0) {
+            struct aircraft *a = interactiveReceiveData(this);
+            if (a && Modes.stat_sbs_connections > 0) modesSendSBSOutput(this, a);  /* Feed SBS bitf_output clients. */
+        }
+        /* In non-interactive way, display messages on standard bitf_output. */
+        if (!Modes.interactive) {
+            displayModesMessage(this);
+            if (!Modes.raw && !Modes.onlyaddr) printf("\n");
+        }
+        /* Send data to connected clients. */
+        if (Modes.net) {
+            modesSendRawOutput(this);  /* Feed raw bitf_output clients. */
+        }
+    }
+}

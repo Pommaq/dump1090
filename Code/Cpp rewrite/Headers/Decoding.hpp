@@ -14,7 +14,8 @@ struct modesMessage {
     modesMessage() = default;
     ~modesMessage() = default;
     modesMessage(unsigned char *msg);
-    /* Generic fields */
+    void updatePlanes();
+        /* Generic fields */
     unsigned char msg[MODES_LONG_MSG_BYTES]; /* Binary bitf_message. */
     int msgbits;                /* Number of bits in bitf_message */
     int msgtype;                /* Downlink format # */
@@ -94,8 +95,6 @@ int cprNFunction(double lat, int isodd);
 double cprDlonFunction(double lat, int isodd);
 
 void decodeCPR(aircraft *a);
-
-void useModesMessage(modesMessage *mm);
 
 void computeMagnitudeVector();
 
