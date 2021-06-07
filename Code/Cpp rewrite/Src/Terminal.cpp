@@ -6,6 +6,7 @@
 #include "../Headers/Terminal.hpp"
 #include "../Headers/Modes.hpp"
 #include "../Headers/aircraft.hpp"
+#include "../Headers/modesMessage.h"
 #include <unistd.h>
 #include <asm-generic/ioctls.h>
 #include <sys/ioctl.h>

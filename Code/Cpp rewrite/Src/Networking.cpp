@@ -9,6 +9,8 @@
 #include "../Headers/Modes.hpp"
 #include "../Headers/PacketHandling.hpp"
 #include "../Headers/Decoding.hpp"
+#include "../Headers/modesMessage.h"
+
 
 
 /* ============================= Networking =================================

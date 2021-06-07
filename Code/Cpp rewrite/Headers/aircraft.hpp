@@ -10,6 +10,13 @@
 
 /* Structure used to describe an aircraft in iteractive mode. */
 struct aircraft {
+private:
+    int cprNLFunction(double lat);
+    int cprNFunction(double lat, int isodd);
+    double cprDlonFunction(double lat, int isodd);
+    int cprModFunction(int a, int b);
+public:
+    void decodeCPR();
     uint32_t addr;      /* ICAO address */
     char hexaddr[7];    /* Printable ICAO address */
     char flight[9];     /* Flight number */

@@ -28,6 +28,6 @@ add_executable(dump1090
         Src/Terminal.cpp Headers/Terminal.hpp
         Src/aircraft.cpp Headers/aircraft.hpp
         Src/Decoding.cpp Headers/Decoding.hpp
-        Src/debugging.cpp Headers/debugging.hpp)
+        Src/debugging.cpp Headers/debugging.hpp Src/modesMessage.cpp Headers/modesMessage.h)
 
 target_link_libraries(dump1090 OpenCL::OpenCL rtlsdr)
