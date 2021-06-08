@@ -1,3 +1,9 @@
 [submodule "librtlsdr"]
 	path = librtlsdr
 	url = https://github.com/librtlsdr/librtlsdr.git
+[submodule "Code/Cpp rewrite/Libraries/libusb"]
+	path = Code/Cpp rewrite/Libraries/libusb
+	url = https://github.com/libusb/libusb.git
+[submodule "Code/Cpp rewrite/Libraries/librtlsdr"]
+	path = Code/Cpp rewrite/Libraries/librtlsdr
+	url = https://github.com/librtlsdr/librtlsdr.git
