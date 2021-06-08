@@ -64,6 +64,7 @@ jobs:
     #    uses a compiled language
 
     - run: |
+      sudo apt-get install build-essential librtlsdr-dev
        cmake .
        make debug
        make release
