@@ -1,6 +1,7 @@
 Dump1090 README
 ===
-
+Heavily based on: https://github.com/antirez/dump1090
+This README is WIP.
 Dump 1090 is a Mode S decoder specifically designed for RTLSDR devices.
 
 The main features are:
@@ -30,6 +31,7 @@ available, developed by MalcolmRobb.
 Compilation
 ---
 Prerequisites (Ubuntu 20.04):
+  * cmake
   * make
   * librtlsdr-dev
   * gcc/g++
@@ -39,7 +41,7 @@ For OpenCL support, install a relevant OpenCL runtime.
 Installation
 ---
 
-Type "make && make install".
+Type "cmake . && make && make install".
 
 Normal usage
 ---
@@ -283,12 +285,12 @@ Contributing
 
 Dump1090 was written during some free time during xmas 2012, it is an hobby
 project so I'll be able to address issues and improve it only during
-free time, however you are incouraged to send pull requests in order to
-improve the program. A good starting point can be the TODO list included in
-the source distribution.
+free time, however you are encouraged to send pull requests in order to
+improve the program. A good starting point can be the Projects tab.
 
 Credits
 ---
 
 Dump1090 was written by Salvatore Sanfilippo <antirez@gmail.com> and is
 released under the BSD three clause license.
+This specific repository has received modifications, by Pommaq <pommaq@protonmail.com> to port it into C++.
