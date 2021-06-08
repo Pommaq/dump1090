@@ -15,6 +15,7 @@
 #include <map>
 #include <iterator>
 
+#define ICAO_ADDR std::hex << mm->aa1 << std::hex << mm->aa2 << std::hex << mm->aa3
 /* ============================ Terminal handling  ========================== */
 
 
@@ -69,9 +70,8 @@ void interactiveShowData() {
     progress[3] = '\0';
 
     std::cout << "\x1b[H\x1b[2J"    /* Clear the screen */
-              <<
-              "Hex    Flight   Altitude  Speed   Lat       Lon       Track  Messages Seen "
-              << progress << "\n--------------------------------------------------------------------------------"
+              << "Hex    Flight   Altitude  Speed   Lat       Lon       Track  Messages Seen " << progress
+              << "\n--------------------------------------------------------------------------------"
               << std::endl;
 
     struct aircraft *a = nullptr;
@@ -103,66 +103,64 @@ void displayModesMessage(modesMessage *mm) {
 
     /* Handle only addresses mode first. */
     if (Modes.onlyaddr) {
-        printf("%02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
+        std::cout << ICAO_ADDR << std::endl;
         return;
     }
 
     /* Show the raw bitf_message. */
-    printf("*");
+    mm->msg[mm->msgbits/8] = '\0';
+    //std::string_view str(mm->msg);
+    std::cout << "*";
     for (j = 0; j < mm->msgbits / 8; j++) printf("%02x", mm->msg[j]);
-    printf(";\n");
+    std::cout << ";" << std::endl;
 
     if (Modes.raw) {
-        fflush(stdout); /* Provide data to the reader ASAP. */
         return; /* Enough for --raw mode */
     }
-
-    printf("CRC: %06x (%s)\n", (int) mm->crc, mm->crcok ? "ok" : "wrong");
+    std::cout << "CRC: " << std::hex << (int) mm->crc << " (" << (mm->crcok ? "ok" : "wrong") << ")\n";
     if (mm->errorbit != -1)
         std::cout << "Single bit error fixed, bit " << mm->errorbit << std::endl;
 
     if (mm->msgtype == 0) {
         /* DF 0 */
-        std::cout << "DF 0: Short Air-Air Surveillance." << std::endl
-        << "  Altitude       : " << mm->altitude
-        << ((mm->unit == MODES_UNIT_METERS) ? "meters" : "feet") << std::endl;
-        printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
+        std::cout << "DF 0: Short Air-Air Surveillance.\n"
+                  << "  Altitude       : " << mm->altitude
+                  << ((mm->unit == MODES_UNIT_METERS) ? "meters\n" : "feet\n")
+                  << "  ICAO Address   : " << ICAO_ADDR << std::endl;
     } else if (mm->msgtype == 4 || mm->msgtype == 20) {
-        std::cout << "DF " << mm->msgtype << ":" << ((mm->msgtype == 4) ? "Surveillance" : "Comm-B") << ", Altitude Reply." << std::endl
-        << "  Flight Status  : " << fs_str[mm->fs] << std::endl
-        << "  DR             : " << mm->dr << std::endl
-        << "  UM             : " << mm->um << std::endl
-        << "  Altitude       : " << mm->altitude << " " << ((mm->unit == MODES_UNIT_METERS) ? "meters" : "feet") << std::endl;
-        printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
+        std::cout << "DF " << mm->msgtype << ":" << ((mm->msgtype == 4) ? "Surveillance" : "Comm-B") << ", Altitude Reply.\n"
+                  << "  Flight Status  : " << fs_str[mm->fs] << "\n"
+                  << "  DR             : " << mm->dr << "\n"
+                  << "  UM             : " << mm->um << "\n"
+                  << "  Altitude       : " << mm->altitude << " " << ((mm->unit == MODES_UNIT_METERS) ? "meters\n" : "feet\n")
+                  << "  ICAO Address   : " << ICAO_ADDR << std::endl;
 
         if (mm->msgtype == 20) {
             /* TODO: 56 bits DF20 MB additional field. */
         }
     } else if (mm->msgtype == 5 || mm->msgtype == 21) {
-        printf("DF %d: %s, Identity Reply.\n", mm->msgtype,
-               (mm->msgtype == 5) ? "Surveillance" : "Comm-B");
-        printf("  Flight Status  : %s\n", fs_str[mm->fs]);
-        printf("  DR             : %d\n", mm->dr);
-        printf("  UM             : %d\n", mm->um);
-        printf("  Squawk         : %d\n", mm->identity);
-        printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
-
+        std::cout << "DF " << mm->msgtype << ": " << ((mm->msgtype == 5) ? "Surveillance\n" : "Comm-B\n")
+                  << "  Flight Status  : " << fs_str[mm->fs] << "\n"
+                  << "  DR             : " << mm->dr << "\n"
+                  << "  UM             : " << mm->um << "\n"
+                  << "  Squawk         : " << mm->identity << "\n"
+                  << "  ICAO Address   : " << ICAO_ADDR << std::endl;
         if (mm->msgtype == 21) {
             /* TODO: 56 bits DF21 MB additional field. */
         }
     } else if (mm->msgtype == 11) {
         /* DF 11 */
-        printf("DF 11: All Call Reply.\n");
-        printf("  Capability  : %s\n", ca_str[mm->ca]);
-        printf("  ICAO Address: %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
+        std::cout << "DF 11: All Call Reply.\n"
+                  << "  Capability  : " << ca_str[mm->ca] << "\n"
+                  << "  ICAO Address: " << ICAO_ADDR << std::endl;
     } else if (mm->msgtype == 17) {
         /* DF 17 */
-        std::cout << "DF 17: ADS-B bitf_message." << std::endl
-        << "  Capability     :" << mm->ca << "(" << ca_str[mm->ca] << ")" << std::endl;
-        printf("  ICAO Address   : %02x%02x%02x\n", mm->aa1, mm->aa2, mm->aa3);
-        std::cout << "  Extended Squitter  Type: " << mm->metype << std::endl
-        << "  Extended Squitter  Sub : " << mm->mesub << std::endl
-        << "  Extended Squitter  Name: " << getMEDescription(mm->metype, mm->mesub) << std::endl;
+        std::cout << "DF 17: ADS-B bitf_message.\n"
+                  << "  Capability     :" << mm->ca << "(" << ca_str[mm->ca] << ")\n"
+                  << "  ICAO Address   : " << ICAO_ADDR << "\n"
+                  << "  Extended Squitter  Type: " << mm->metype << "\n"
+                  << "  Extended Squitter  Sub : " << mm->mesub << "\n"
+                  << "  Extended Squitter  Name: " << getMEDescription(mm->metype, mm->mesub) << std::endl;
 
         /* Decode the extended squitter bitf_message. */
         if (mm->metype >= 1 && mm->metype <= 4) {
@@ -173,25 +171,24 @@ void displayModesMessage(modesMessage *mm) {
                     "Aircraft Type B",
                     "Aircraft Type A"
             };
-
-            printf("    Aircraft Type  : %s\n", ac_type_str[mm->aircraft_type]);
-            printf("    Identification : %s\n", mm->flight);
+            std::cout << "    Aircraft Type  : " << ac_type_str[mm->aircraft_type] << "\n"
+                      << "    Identification : "<< mm->flight << "\n";
         } else if (mm->metype >= 9 && mm->metype <= 18) {
-            printf("    F flag   : %s\n", mm->fflag ? "odd" : "even");
-            printf("    T flag   : %s\n", mm->tflag ? "UTC" : "non-UTC");
-            printf("    Altitude : %d feet\n", mm->altitude);
-            printf("    Latitude : %d (not decoded)\n", mm->raw_latitude);
-            printf("    Longitude: %d (not decoded)\n", mm->raw_longitude);
+            std::cout << "    F flag   : " << (mm->fflag ? "odd\n" : "even\n")
+                      << "    T flag   : " << (mm->tflag ? "UTC\n" : "non-UTC\n")
+                      << "    Altitude : " << mm->altitude << " feet\n"
+                      << "    Latitude : " << mm->raw_latitude << " (not decoded)\n"
+                      << "    Longitude: " << mm->raw_longitude << " (not decoded)" << std::endl;
         } else if (mm->metype == 19 && mm->mesub >= 1 && mm->mesub <= 4) {
             if (mm->mesub == 1 || mm->mesub == 2) {
                 /* Velocity */
-                printf("    EW direction      : %d\n", mm->ew_dir);
-                printf("    EW velocity       : %d\n", mm->ew_velocity);
-                printf("    NS direction      : %d\n", mm->ns_dir);
-                printf("    NS velocity       : %d\n", mm->ns_velocity);
-                printf("    Vertical rate src : %d\n", mm->vert_rate_source);
-                printf("    Vertical rate sign: %d\n", mm->vert_rate_sign);
-                printf("    Vertical rate     : %d\n", mm->vert_rate);
+                std::cout << "    EW direction      : " << mm->ew_dir << "\n"
+                          << "    EW velocity       : " << mm->ew_velocity << "\n"
+                          << "    NS direction      : " << mm->ns_dir << "\n"
+                          << "    NS velocity       : " << mm->ns_velocity << "\n"
+                          << "    Vertical rate src : " << mm->vert_rate_source << "\n"
+                          << "    Vertical rate sign: " << mm->vert_rate_sign << "\n"
+                          << "    Vertical rate     : " << mm->vert_rate << std::endl;
             } else if (mm->mesub == 3 || mm->mesub == 4) {
                 printf("    Heading status: %d", mm->heading_is_valid);
                 printf("    Heading: %d", mm->heading);
@@ -202,15 +199,15 @@ void displayModesMessage(modesMessage *mm) {
         }
     } else {
         if (Modes.check_crc)
-            printf("DF %d with good CRC received "
-                   "(decoding still not implemented).\n",
-                   mm->msgtype);
+            std::cout << "DF " << mm->msgtype << " with good CRC received\n"
+                                                 "(decoding still not implemented)." << std::endl;
     }
 }
 
 
 std::string & getMEDescription(int metype, int mesub) {
-    static std::string mename = "Unknown";
+    static std::string mename;
+    mename = "Unknown";
 
     if (metype >= 1 && metype <= 4)
         mename = "Aircraft Identification and Category";

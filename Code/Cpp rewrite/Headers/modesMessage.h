@@ -23,7 +23,7 @@ public:
     modesMessage(unsigned char *msg);
     void updatePlanes();
     /* Generic fields */
-    unsigned char msg[MODES_LONG_MSG_BYTES]; /* Binary bitf_message. */
+    unsigned char msg[MODES_LONG_MSG_BYTES+1]; /* Binary bitf_message. */
     int msgbits;                /* Number of bits in bitf_message */
     int msgtype;                /* Downlink format # */
     int crcok;                  /* True if CRC was valid */
