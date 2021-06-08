@@ -46,7 +46,6 @@ int g_settings::modesInit() {
      * every different I/Q pair will result in a different magnitude value,
      * not losing any resolution. */
     this->maglut = new uint16_t[129*129];
-            //malloc(129 * 129 * 2);
     for (i = 0; i <= 128; i++) {
         for (q = 0; q <= 128; q++) {
             this->maglut[i * 129 + q] = round(sqrt(i * i + q * q) * 360);
