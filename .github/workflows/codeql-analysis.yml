@@ -66,8 +66,7 @@ jobs:
     - run: |
        sudo apt-get install build-essential librtlsdr-dev
        cmake .
-       make debug
-       make release
+       make
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
