@@ -251,15 +251,16 @@ int main(int argc, char **argv) {
 
     /* If --ifile and --stats were given, print statistics. */
     if (Modes.stats && !Modes.filename.empty()) {
-        std::cout << Modes.stat_valid_preamble << " valid preambles" << std::endl;
-        std::cout << Modes.stat_out_of_phase << " demodulated again after phase correction" << std::endl;
-        std::cout << Modes.stat_demodulated << " demodulated with zero errors" << std::endl;
-        std::cout << Modes.stat_goodcrc << " with good crc" << std::endl;
-        std::cout << Modes.stat_badcrc << " with bad crc" << std::endl;
-        std::cout << Modes.stat_fixed << " errors corrected" << std::endl;
-        std::cout << Modes.stat_single_bit_fix << " single bit errors" << std::endl;
-        std::cout << Modes.stat_two_bits_fix << " two bit errors" << std::endl;
-        std::cout << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
+        std::cout
+        << Modes.stat_valid_preamble             << " valid preambles\n"
+        << Modes.stat_out_of_phase               << " demodulated again after phase correction\n"
+        << Modes.stat_demodulated                << " demodulated with zero errors\n"
+        << Modes.stat_goodcrc                    << " with good crc\n"
+        << Modes.stat_badcrc                     << " with bad crc\n"
+        << Modes.stat_fixed                      << " errors corrected\n"
+        << Modes.stat_single_bit_fix             << " single bit errors\n"
+        << Modes.stat_two_bits_fix               << " two bit errors\n"
+        << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
     }
     reader_thread.join();
     rtlsdr_close(Modes.dev);
