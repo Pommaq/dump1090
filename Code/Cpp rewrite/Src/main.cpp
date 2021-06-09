@@ -224,7 +224,6 @@ int main(int argc, char **argv) {
 
     /* Create the thread that will read the data from the device. */
     std::thread reader_thread = std::thread(readerThreadEntryPoint, nullptr);
-    for (int i = 0; i < 1000; i++); // Give the 2nd thread some time to reach its first lock
     while (!Modes.exit) {
         if (!Modes.data_ready) {
             Modes.mtx.unlock();
