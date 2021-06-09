@@ -92,9 +92,7 @@ void backgroundTasks() {
     }
 }
 
-bool eval(){
-    return Modes.data_ready == 1;
-}
+
 int main(int argc, char **argv) {
     int j;
 
