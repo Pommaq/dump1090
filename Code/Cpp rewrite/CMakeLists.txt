@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 20)
 include_directories(${CMAKE_SOURCE_DIR}/Src)
 include_directories(${CMAKE_SOURCE_DIR}/Headers)
 link_directories(${CMAKE_BINARY_DIR}/Src)

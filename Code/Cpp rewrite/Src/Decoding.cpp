@@ -4,10 +4,7 @@
 
 #include <cstring>
 #include "../Headers/Decoding.hpp"
-#include "../Headers/data_reader.hpp"
 #include "../Headers/Networking.hpp"
-#include "../Headers/aircraft.hpp"
-#include "../Headers/Terminal.hpp"
 #include "../Headers/debugging.hpp"
 #include "../Headers/Utilities.hpp"
 #include "../Headers/modesMessage.h"
@@ -136,11 +133,10 @@ int decodeHexMessage(struct client *c) {
 
 /* Turn I/Q samples pointed by Modes.data into the magnitude vector
  * pointed by Modes.magnitude. */
-void computeMagnitudeVector() {
-    uint16_t *m = Modes.magnitude;
+std::shared_ptr<uint16_t> computeMagnitudeVector() {
+    std::shared_ptr<uint16_t> m(new uint16_t[Modes.data_len]);
     unsigned char *p = Modes.data;
     uint32_t j;
-
     /* Compute the magnitudo vector. It's just SQRT(I^2 + Q^2), but
      * we rescale to the 0-255 range to exploit the full resolution. */
     for (j = 0; j < Modes.data_len; j += 2) {
@@ -149,8 +145,9 @@ void computeMagnitudeVector() {
 
         if (i < 0) i = -i;
         if (q < 0) q = -q;
-        m[j / 2] = Modes.maglut[i * 129 + q];
+        m.get()[j / 2] = Modes.maglut[i * 129 + q];
     }
+    return m;
 }
 
 /* Return -1 if the bitf_message is out of fase left-side
@@ -326,7 +323,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
                  * is an effective way to detect if it's just random noise
                  * that was detected as a valid preamble. */
                 bits[i / 2] = 2; /* error */
-                if (i < MODES_SHORT_MSG_BITS * 2) errors++;
+                if (i < MODES_SHORT_MSG_BITS * 2) {
+                    errors++;
+                };
             } else if (low > high) {
                 bits[i / 2] = 1;
             } else {
@@ -522,32 +521,46 @@ int fixSingleBitErrors(unsigned char *msg, int bits) {
  * This is very slow and should be tried only against DF17 messages that
  * don't pass the checksum, and only in Aggressive Mode.
  * fixSingleBitErrors has already been called if this is run. Don't bother just flipping 1 bit.
+ * We'd rather run this once than run the first and then this, since they both do the work
+ * of flipping the first bits. Lets not waste clock cycles and work.
  * */
 int fixTwoBitsErrors(unsigned char *msg, int bits) {
     int j, i;
     unsigned char aux[MODES_LONG_MSG_BITS / 8];
+    uint32_t expected_crc, crc2;
+
+
 
     for (j = 0; j < bits; j++) {
         int byte1 = j / 8;
         int bitmask1 = 1 << (7 - (j % 8));
+        memcpy(aux, msg, bits / 8); // Grab a buffer
+        aux[byte1] ^= bitmask1; /* Flip j-th bit. */
+
+        expected_crc = ((uint32_t) aux[(bits / 8) - 3] << 16) |
+                       ((uint32_t) aux[(bits / 8) - 2] << 8) |
+                       (uint32_t) aux[(bits / 8) - 1];
+
+        crc2 = modesChecksum(aux, bits);
+        if (expected_crc == crc2) [[unlikely]] { // Its fixed
+            memcpy(msg, aux, bits / 8);
+            return j;
+        }
 
         /* Don't check the same pairs multiple times, so i starts from j+1 */
         for (i = j + 1; i < bits; i++) {
             int byte2 = i / 8;
             int bitmask2 = 1 << (7 - (i % 8));
-            uint32_t crc1, crc2;
 
-            memcpy(aux, msg, bits / 8);
-
-            aux[byte1] ^= bitmask1; /* Flip j-th bit. */
             aux[byte2] ^= bitmask2; /* Flip i-th bit. */
+            expected_crc = ((uint32_t) aux[(bits / 8) - 3] << 16) |
+                           ((uint32_t) aux[(bits / 8) - 2] << 8) |
+                           (uint32_t) aux[(bits / 8) - 1];
 
-            crc1 = ((uint32_t) aux[(bits / 8) - 3] << 16) |
-                   ((uint32_t) aux[(bits / 8) - 2] << 8) |
-                   (uint32_t) aux[(bits / 8) - 1];
+
             crc2 = modesChecksum(aux, bits);
 
-            if (crc1 == crc2) {
+            if (expected_crc == crc2) {
                 /* The error is fixed. Overwrite the original buffer with
                  * the corrected sequence, and returns the error bit
                  * position. */

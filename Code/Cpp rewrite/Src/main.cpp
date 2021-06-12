@@ -221,7 +221,7 @@ int main(int argc, char **argv) {
         modesWaitReadableClients(100);
     }
 
-
+    std::shared_ptr<uint16_t> raw_data;
     /* Create the thread that will read the data from the device. */
     std::thread reader_thread = std::thread(readerThreadEntryPoint, nullptr);
     while (!Modes.exit) {
@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
             Modes.data_cond.wait(*Modes.data_lock);//, eval);
             continue;
         }
-        computeMagnitudeVector(); // Calculates stuff. No copies
+        raw_data = computeMagnitudeVector(); // Calculates stuff. No copies
 
 
         /* Process data after releasing the lock, so that the capturing
@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
 
         Modes.data_cond.notify_one();
 
-        detectModeS(Modes.magnitude, Modes.data_len / 2);
+        detectModeS(raw_data.get(), Modes.data_len / 2);
         backgroundTasks();
         Modes.mtx.lock();
     }

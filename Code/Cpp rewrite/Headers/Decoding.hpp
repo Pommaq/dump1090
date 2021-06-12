@@ -19,7 +19,7 @@ int modesMessageLenByType(int type);
 
 int hexDigitVal(int c);
 
-void computeMagnitudeVector();
+std::shared_ptr<uint16_t> computeMagnitudeVector();
 
 int detectOutOfPhase(uint16_t const *m);
 

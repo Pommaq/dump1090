@@ -38,17 +38,21 @@ modesMessage::modesMessage(unsigned char *msg) {
 
     if (!this->crcok && Modes.fix_errors &&
         (this->msgtype == 11 || this->msgtype == 17)) {
-        if ((this->errorbit = fixSingleBitErrors(msg, this->msgbits)) != -1) {
+        // We need to fix it or drop this packet
+        if (Modes.aggressive && this->msgtype == 17) {
+            if ((this->errorbit = fixTwoBitsErrors(msg, this->msgbits)) != -1) {
+                this->crc = modesChecksum(msg, this->msgbits);
+                this->crcok = 1;
+            }
+        }
+        else if ((this->errorbit = fixSingleBitErrors(msg, this->msgbits)) != -1) {
             if (this->errorbit == -2) {
                 exit(EXIT_FAILURE);
             }
             this->crc = modesChecksum(msg, this->msgbits);
             this->crcok = 1;
-        } else if (Modes.aggressive && this->msgtype == 17 &&
-                   (this->errorbit = fixTwoBitsErrors(msg, this->msgbits)) != -1) {
-            this->crc = modesChecksum(msg, this->msgbits);
-            this->crcok = 1;
         }
+
     }
 
     /* Note that most of the other computation happens *after* we fix
