@@ -34,12 +34,22 @@ Prerequisites (Ubuntu 20.04):
   * librtlsdr-dev
   * gcc/g++
 
+Prerequisites (Fedora 34):
+  * make
+  * cmake
+  * rtl-sdr-devel
+  * gcc/g++
+
 For OpenCL support, install a relevant OpenCL runtime.
 
-Installation
+Compilation/Installation
 ---
-
-Type "make && make install".
+Assumes you're standing at git repo root
+```
+$ cmake .
+$ make 
+# make install
+```
 
 Normal usage
 ---
