@@ -6,12 +6,13 @@
 #define DUMP1090_EXPANDED_SET_HPP
 
 #include <vector>
-#include <set>
+#include <queue>
 #include <shared_mutex>
+#include <thread>
 #include "../Headers/PacketHandling.hpp"
 
 template<typename T>
-class eset : public std::set<int64_t, T> {
+class equeue : public std::queue<T> {
 public:
     std::shared_lock<std::mutex> lock;
 
@@ -19,9 +20,9 @@ public:
 
     packet &&move_packet(int64_t id);
 
-    eset() = default;
+    equeue() = default;
 
-    ~eset() = default;
+    ~equeue() = default;
 };
 
 

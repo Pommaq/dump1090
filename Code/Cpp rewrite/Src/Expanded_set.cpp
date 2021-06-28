@@ -5,18 +5,18 @@
 #include "../Headers/Expanded_set.hpp"
 
 template<typename T>
-void eset<T>::insert_packet(packet &to_store) {
+void equeue<T>::insert_packet(packet &to_store) {
     this->lock.lock();
     this->insert(to_store);
     this->lock.unlock();
 }
 
 template<typename T>
-packet&& eset<T>::move_packet(int64_t id) {
+packet&& equeue<T>::move_packet(int64_t id) {
     packet* tmp;
     this->lock.lock();
     auto it = this->find(id);
-    if (it != std::set<T>::end()){
+    if (it != std::queue<T>::end()){
         tmp = std::move(*it);
     }
     this->lock.unlock();

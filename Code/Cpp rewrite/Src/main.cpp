@@ -240,10 +240,22 @@ int main(int argc, char **argv) {
         /* Signal to the other thread that we processed the available data
          * and we want more (useful for --ifile). */
         Modes.data_ready = 0;
-
         Modes.data_cond.notify_one();
 
         detectModeS(raw_data.get(), Modes.data_len / 2);
+        /*
+         * modesMessage = detectModeS // Unfinished message. No error corrections and not interpreted.
+         *
+         *fix_me_queue.lock()
+         *fix_me_queue.append(modesMessage); // Wont do anything if crc_ok
+         *fix_me_queue.unlock()
+         *
+         *
+         * fixed_queuelock(); // Sleep if there is nothing in it
+         * message = std::move(fixed_queue.pop());
+         * fixed_queue.sem.unlock();
+         * message.interpret();
+         * */
         backgroundTasks();
         Modes.mtx.lock();
     }

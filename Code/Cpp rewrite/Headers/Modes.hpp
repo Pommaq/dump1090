@@ -58,7 +58,7 @@
 #include <condition_variable>
 #include <fstream>
 #include <memory>
-#include <rtl-sdr.h>
+#include "rtl-sdr.h"
 #include <map>
 #include "anet.hpp"
 #include "data_reader.hpp"

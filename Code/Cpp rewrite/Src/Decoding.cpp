@@ -378,6 +378,7 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
 
             /* Decode the received bitf_message and update statistics */
             modesMessage mm(msg);
+            // TODO: Move this statistics part to somewhere else so we can do errorfixes on a separate thread.
 
             /* Update statistics. */
             if (mm.crcok || use_correction) {
