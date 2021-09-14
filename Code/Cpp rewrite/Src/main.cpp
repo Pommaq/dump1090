@@ -222,12 +222,17 @@ int main(int argc, char **argv) {
     }
 
     std::shared_ptr<uint16_t> raw_data;
+
+    equeue<modesMessage> bad_messages;
+    equeue<modesMessage> good_messages;
+
+    std::vector<std::thread> threads;
     /* Create the thread that will read the data from the device. */
-    std::thread reader_thread = std::thread(readerThreadEntryPoint, nullptr);
+    threads.emplace_back(readerThreadEntryPoint, nullptr);
     while (!Modes.exit) {
         if (!Modes.data_ready) {
             Modes.mtx.unlock();
-            Modes.data_cond.wait(*Modes.data_lock);//, eval);
+            Modes.data_cond.wait(*Modes.data_lock);
             continue;
         }
         raw_data = computeMagnitudeVector(); // Calculates stuff. No copies
@@ -242,7 +247,9 @@ int main(int argc, char **argv) {
         Modes.data_ready = 0;
         Modes.data_cond.notify_one();
 
-        detectModeS(raw_data.get(), Modes.data_len / 2);
+        detectModeS(raw_data.get(), Modes.data_len / 2, bad_messages, good_messages);
+
+
         /*
          * modesMessage = detectModeS // Unfinished message. No error corrections and not interpreted.
          *
@@ -273,7 +280,9 @@ int main(int argc, char **argv) {
         << Modes.stat_two_bits_fix               << " two bit errors\n"
         << Modes.stat_goodcrc + Modes.stat_fixed << " total usable messages" << std::endl;
     }
-    reader_thread.join();
+    // Wait for all threads to finish
+    for (auto &thread: threads)
+        thread.join();
     rtlsdr_close(Modes.dev);
     return 0;
 }

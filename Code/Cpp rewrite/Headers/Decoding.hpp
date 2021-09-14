@@ -7,6 +7,7 @@
 #include "aircraft.hpp"
 #include "data_reader.hpp"
 #include "Modes.hpp"
+#include "Expanded_set.hpp"
 #include <cmath>
 
 
@@ -25,7 +26,7 @@ int detectOutOfPhase(uint16_t const *m);
 
 void applyPhaseCorrection(uint16_t *m);
 
-void detectModeS(uint16_t *m, uint32_t mlen);
+void detectModeS(uint16_t *m, uint32_t mlen, equeue <modesMessage> &bad_queue, equeue <modesMessage> &good_queue);
 
 int decodeAC13Field(unsigned char *msg, int *unit);
 

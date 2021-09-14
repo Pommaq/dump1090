@@ -18,14 +18,17 @@ private:
     void addRecentlySeenICAOAddr(uint32_t addr);
     int ICAOAddressWasRecentlySeen(uint32_t addr);
 public:
-    modesMessage() = default;
+    modesMessage();
     ~modesMessage() = default;
-    modesMessage(unsigned char *msg);
+    modesMessage(unsigned char *msg, uint64_t seq);
     void updatePlanes();
+    void decodeMessage();
+    int errorfix(bool twobitfix);
     /* Generic fields */
     unsigned char msg[MODES_LONG_MSG_BYTES+1]; /* Binary bitf_message. */
     int msgbits;                /* Number of bits in bitf_message */
     int msgtype;                /* Downlink format # */
+    uint64_t sequence_number;        /* Sequence number from where its grabbed */
     int crcok;                  /* True if CRC was valid */
     uint32_t crc;               /* Message CRC */
     int errorbit;               /* Bit corrected. -1 if no bit corrected. */
