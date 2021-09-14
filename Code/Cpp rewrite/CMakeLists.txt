@@ -1,6 +1,6 @@
 set(CMAKE_CXX_STANDARD 20)
-include_directories(${PROJECT_SOURCE_DIR}/Src)
-include_directories(${PROJECT_SOURCE_DIR}/Headers)
+include_directories("../Refactor/Modes Handling/Src")
+include_directories("../Refactor/Modes Handling/Headers")
 link_directories(${CMAKE_BINARY_DIR}/Src)
 link_directories(${CMAKE_BINARY_DIR}/Headers)
 
