@@ -9,7 +9,20 @@
 #include <cstddef>
 #include <array>
 #include <iostream>
+#include <exception>
 #define BUFFER_SIZE 4096*4096
+
+struct SourceException: public std::exception {
+    /* Catch-all exception for data_source structures. */
+    [[nodiscard]] const char * what () const noexcept override
+    {
+        return "Unhandled SourceException thrown";
+    }
+};
+
+struct NoSourceException: public SourceException{
+    const char* message = "No sources found";
+};
 
 class data_source {
     /* Provides an interface to read data in a stream-like fashion from a custom source */

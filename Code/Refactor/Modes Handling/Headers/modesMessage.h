@@ -8,7 +8,7 @@ class modesMessage {
      */
 private:
 protected:
-    std::string message;x
+    std::string message;
     int message_type;
     uint32_t expected_crc;
 

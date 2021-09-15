@@ -8,6 +8,8 @@
 #include "rtl-sdr.h"
 #include "../Headers/anet.hpp"
 #include "../Headers/Modes.hpp"
+#include "../../Refactor/data sources/Headers/rtlsdr.h"
+
 #include <thread>
 #include <mutex>
 #include <condition_variable>
@@ -179,5 +181,4 @@ void *readerThreadEntryPoint(void *arg) {
     }
     return nullptr;
 }
-
 
