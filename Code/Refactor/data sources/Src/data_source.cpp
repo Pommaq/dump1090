@@ -1,11 +1,18 @@
-//
-// Created by timmy on 9/14/21.
-//
-
-#include <cstddef>
 #include "data_source.h"
 
-data_source::data_source() {
-    this->buffer = std::array<char, BUFFER_SIZE>();
-
+const char *SourceException::message() const {
+    if (this->msg) {
+        return this->msg;
+    }
+    return nullptr;
 }
+
+SourceException::SourceException(const char *message) {
+    this->msg = message;
+}
+
+const char *SourceException::what() const noexcept {
+    return "An exception occured during handling of datasource";
+}
+
+

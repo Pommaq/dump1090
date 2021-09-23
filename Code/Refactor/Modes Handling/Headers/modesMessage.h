@@ -1,5 +1,6 @@
 #ifndef DUMP1090_MODESMESSAGE_H
 #define DUMP1090_MODESMESSAGE_H
+
 #include <string>
 
 class modesMessage {
@@ -14,7 +15,9 @@ protected:
 
 public:
     [[nodiscard]] bool is_broken() const;
-    modesMessage(const std::string& msg, int msg_type);
+
+    modesMessage(const std::string &msg, int msg_type);
+
     [[nodiscard]] uint32_t checksum() const;
 };
 

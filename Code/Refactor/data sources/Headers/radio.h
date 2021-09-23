@@ -1,25 +1,23 @@
-//
-// Created by timmy on 9/14/21.
-//
-
 #ifndef DUMP1090_RADIO_H
 #define DUMP1090_RADIO_H
+
 #include "data_source.h"
 #include "rtlsdr.h"
-#include "rtl-sdr.h"
 
+/* Responsible for setting up the given device with sane default values. */
+template<std::ptrdiff_t T>
+class radio : virtual protected data_source {
+private:
+    rtlsdr<T> device;
+    uint32_t bufnum;
+    uint32_t buffer_length;
+    void* ctx;
+public:
+    radio(rtlsdr<T> &&device, int gain, bool enable_agc, long long int freq, int sample_rate, uint32_t bufnum,
+          uint32_t buffer_length, void *ctx);
 
-struct NoDevicesError: public NoSourceException {
-    [[nodiscard]] const char * what () const noexcept override
-    {
-        return "Failed to allocate data source";
-    }
-};
-
-class radio: virtual protected data_source {
-    rtlsdr device;
-    radio(rtlsdr&& device, int gain, bool enable_agc, long long int freq, int sample_rate);
-    bool fill_buffer() override;
+    void run();
+    std::vector<unsigned char> get_data() override;
 };
 
 

@@ -42,7 +42,7 @@ const uint32_t modes_checksum_table[112] = {
 };
 
 
-uint32_t modesChecksum(const std::string & message) {
+uint32_t modesChecksum(const std::string &message) {
     uint32_t crc = 0;
     unsigned long int bits = message.length() * 8;
     int offset = (bits == 112) ? 0 : (112 - 56);

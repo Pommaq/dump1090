@@ -1,15 +1,30 @@
-//
-// Created by timmy on 9/14/21.
-//
-
 #include "radio.h"
 
-/* Throws SDRAttributeError if an attribute cant be set */
-radio::radio(rtlsdr&& device, int gain, bool enable_agc, long long int freq, int sample_rate){
+template<std::ptrdiff_t T>
+radio<T>::radio(rtlsdr<T> &&device, int gain, bool enable_agc, long long int freq, int sample_rate, uint32_t bufnum,
+                uint32_t buffer_length, void *ctx) {
+    /*
+     * \param bufnum optional buffer count, bufnum * buffer_length = overall buffer size
+     *		  set to 0 for default buffer count (15)
+     * \param buffer_length optional, must be multiple of 512,
+     *		  should be a multiple of 16384 (URB size),
+     *		  set to 0 for default buffer length (16 * 32 * 512)
+     * \param ctx user specific context to pass to the callback function
+     *
+     *  I am not sure what these parameters mean, but I am assuming the sdr keeps a pool of <bufnum> buffers
+     *  of length buffer_length each. Once one buffer is filled it will be passed to the callback function.
+     *
+     * throws SourceException upon hitting exceptions
+     * */
+
     this->device = std::move(device);
 
+    this->bufnum = bufnum;
+    this->buffer_length = buffer_length;
+    this->ctx = ctx;
+
+
     bool manual_gain_control = (gain != MODES_AUTO_GAIN);
-    /* Set gain, frequency, sample rate, and reset the device. */
     this->device.set_gain_mode(manual_gain_control);
 
     if (manual_gain_control) {
@@ -31,7 +46,13 @@ radio::radio(rtlsdr&& device, int gain, bool enable_agc, long long int freq, int
     this->device.reset_buffer();
 }
 
-bool radio::fill_buffer() {
-    // TODO: Implement
-    return false;
+template<std::ptrdiff_t T>
+std::vector<unsigned char> radio<T>::get_data() {
+    return this->device.fill_buffer();
+}
+
+template<std::ptrdiff_t T>
+void radio<T>::run() {
+    this->device.start(this->bufnum, this->buffer_length, this->cbx);
+
 }

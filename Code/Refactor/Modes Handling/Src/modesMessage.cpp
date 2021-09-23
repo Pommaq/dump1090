@@ -2,7 +2,7 @@
 #include "decoding.h"
 
 
-modesMessage::modesMessage(const std::string& msg, int msg_type): message(msg), message_type(msg_type) {
+modesMessage::modesMessage(const std::string &msg, int msg_type) : message(msg), message_type(msg_type) {
     /*
      This class expects the caller to have already detected the preamble and the message type,
      passing the length of our data to it. It also assumes the caller knows the buffer is large enough for us to copy.

@@ -1,31 +1,18 @@
 Dump1090 README
 ===
 
-Dump 1090 is a Mode S decoder specifically designed for RTLSDR devices.
+### Foreword
+Dump1090 is a Mode S decoder. This specific project is an attempt to rewrite it all into nice, modern, C++...
+Its also attempting to split the main program into separate modules to decrease the original's coupling issues 
+and to give us an opportunity to decode multiple messages in parallel, which the original cannot do
+due to the "layered" approach it took (The function that found a message will immediately call functions to handle it).
 
-The main features are:
+At first I'm hoping to remove the majority of the C code and remove most of the raw pointers,
+improve memory safety, fix race conditions, add OpenCL support for calculating CRC's (maybe) and to fix bit
+errors in parallel to offload the CPU when a lot of airplanes are present. Finally I want to make it platform independent.
 
-* Robust decoding of weak messages, with mode1090 many users observed
-  improved range compared to other popular decoders.
-* Network support: TCP30003 stream (MSG5...), Raw packets, HTTP.
-* Embedded HTTP server that displays the currently detected aircrafts on
-  Google Map.
-* Single bit errors correction using the 24 bit CRC.
-* Ability to decode DF11, DF17 messages.
-* Ability to decode DF formats like DF0, DF4, DF5, DF16, DF20 and DF21
-  where the checksum is xored with the ICAO address by brute forcing the
-  checksum field using recently seen ICAO addresses.
-* Decode raw IQ samples from file (using --ifile command line switch).
-* Interactive command-line-interfae mode where aircrafts currently detected
-  are shown as a list refreshing as more data arrives.
-* CPR coordinates decoding and track calculation from velocity.
-* TCP server streaming and receiving raw data to/from connected clients
-  (using --net).
-
-While from time to time I still add / fix stuff in my fork, I target
-minimalism of the implementation. However there is a
-[much more feature complete fork](https://github.com/MalcolmRobb/dump1090)
-available, developed by MalcolmRobb.
+While doing the rewrite I might end up removing features I deem unnecessary and add others that I want to have.
+In the end this program is likely not going to be anything at all similar to Antirez's work.
 
 Compilation
 ---
