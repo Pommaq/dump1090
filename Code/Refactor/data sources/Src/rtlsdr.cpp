@@ -177,7 +177,7 @@ void rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t buffer_len
                       bufnum,
                       buffer_length
     )) {
-        throw SourceException("Failed starting device in asynchronous mode")
+        throw SourceException("Failed starting device in asynchronous mode");
     }
 
 }
