@@ -31,8 +31,7 @@ rtlsdr<T>::~rtlsdr() {
 }
 
 template<std::ptrdiff_t T>
-rtlsdr<T>::rtlsdr(rtlsdr &&other) noexcept : device(other.device), vendor(other.vendor), product(other.product),
-                                             serial(other.serial) {
+rtlsdr<T>::rtlsdr(rtlsdr &&other) noexcept : device(other.device) {
     other.device = nullptr;
 }
 
@@ -40,9 +39,6 @@ template<std::ptrdiff_t T>
 rtlsdr<T> &rtlsdr<T>::operator=(rtlsdr<T> &&other) noexcept {
     this->device = other.device;
     other.device = nullptr;
-    this->vendor = other.vendor;
-    this->product = other.product;
-    this->serial = other.serial;
     return *this;
 }
 
@@ -109,22 +105,6 @@ void rtlsdr<T>::set_sample_rate(int sample_rate) {
 template<std::ptrdiff_t T>
 void rtlsdr<T>::reset_buffer() {
     rtlsdr_reset_buffer(this->device);
-}
-
-template<std::ptrdiff_t T>
-std::string rtlsdr<T>::get_vendor() {
-    // The string is null-terminated already
-    return this->vendor.data();
-}
-
-template<std::ptrdiff_t T>
-std::string rtlsdr<T>::get_product() {
-    return this->product.data();
-}
-
-template<std::ptrdiff_t T>
-std::string rtlsdr<T>::get_serial() {
-    return this->serial.data();
 }
 
 template<std::ptrdiff_t T>

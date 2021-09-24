@@ -70,12 +70,6 @@ public:
 
     void reset_buffer();
 
-    std::string get_vendor();
-
-    std::string get_product();
-
-    std::string get_serial();
-
     std::vector<unsigned char> fill_buffer();
 
     void start(uint32_t bufnum, uint32_t buffer_length, void* cbx = nullptr);
