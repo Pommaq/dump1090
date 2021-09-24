@@ -1,28 +1,29 @@
 #include "rtlsdr.h"
+#include "data_source.h"
 
 template<std::ptrdiff_t T>
-rtlsdr<T>::rtlsdr(int device_index) {
+RTLsdr::rtlsdr<T>::rtlsdr(int device_index) {
     this->device = nullptr;
 
     uint32_t device_count = rtlsdr_get_device_count();
     if (!device_count) {
-        throw SourceException("No SDR devices found");
+        throw DataSource::SourceException("No SDR devices found");
     }
 
     rtlsdr_get_device_usb_strings(device_index, this->vendor.data(), this->product.data(), this->serial.data());
 
     if (rtlsdr_open(&(this->device), device_index) < 0) {
-        throw SourceException("Unable to open SDR device");
+        throw DataSource::SourceException("Unable to open SDR device");
     }
 }
 
 template<std::ptrdiff_t T>
-rtlsdr<T>::~rtlsdr() {
+RTLsdr::rtlsdr<T>::~rtlsdr() {
     if (this->device) {
         try {
             this->kill();
         }
-        catch (SourceException &e) {
+        catch (DataSource::SourceException &e) {
             // pass
         }
 
@@ -31,84 +32,84 @@ rtlsdr<T>::~rtlsdr() {
 }
 
 template<std::ptrdiff_t T>
-rtlsdr<T>::rtlsdr(rtlsdr &&other) noexcept : device(other.device) {
+RTLsdr::rtlsdr<T>::rtlsdr(RTLsdr::rtlsdr<T> &&other) noexcept : device(other.device) {
     other.device = nullptr;
 }
 
 template<std::ptrdiff_t T>
-rtlsdr<T> &rtlsdr<T>::operator=(rtlsdr<T> &&other) noexcept {
+RTLsdr::rtlsdr<T> &RTLsdr::rtlsdr<T>::operator=(RTLsdr::rtlsdr<T> &&other) noexcept {
     this->device = other.device;
     other.device = nullptr;
     return *this;
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_gain_mode(bool manual) {
+void RTLsdr::rtlsdr<T>::set_gain_mode(bool manual) {
     rtlsdr_set_tuner_gain_mode(this->device, manual);
 }
 
 template<std::ptrdiff_t T>
-int rtlsdr<T>::get_tuner_gains(std::array<int, 100> &buffer) {
+int RTLsdr::rtlsdr<T>::get_tuner_gains(std::array<int, 100> &buffer) {
     /* Given buffer state will be undefined if SDRAttributeError is thrown */
     int numgain = rtlsdr_get_tuner_gains(this->device, buffer.data());
     if (!numgain) {
-        throw SourceException("Unable to get tuner gain levels");
+        throw DataSource::SourceException("Unable to get tuner gain levels");
     }
     return numgain;
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_tuner_gain(int gain) {
+void RTLsdr::rtlsdr<T>::set_tuner_gain(int gain) {
     int cant_set_gain = rtlsdr_set_tuner_gain(this->device, gain);
     if (cant_set_gain) {
-        throw SourceException("Unable to set tuner gain level");
+        throw DataSource::SourceException("Unable to set tuner gain level");
     }
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_freq_correction(int ppm) {
+void RTLsdr::rtlsdr<T>::set_freq_correction(int ppm) {
     int success = rtlsdr_set_freq_correction(this->device, ppm);
     if (!success) {
-        throw SourceException("Unable to set frequency correction");
+        throw DataSource::SourceException("Unable to set frequency correction");
     }
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_agc_mode(bool enabled) {
+void RTLsdr::rtlsdr<T>::set_agc_mode(bool enabled) {
     int success = rtlsdr_set_agc_mode(this->device, enabled);
     if (!success) {
-        throw SourceException("Unable to set AGC mode");
+        throw DataSource::SourceException("Unable to set AGC mode");
     }
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_center_freq(long long int freq) {
+void RTLsdr::rtlsdr<T>::set_center_freq(long long int freq) {
     int success = rtlsdr_set_center_freq(this->device, freq);
     if (!success) {
-        throw SourceException("Unable to set center frequency");
+        throw DataSource::SourceException("Unable to set center frequency");
     }
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::set_sample_rate(int sample_rate) {
+void RTLsdr::rtlsdr<T>::set_sample_rate(int sample_rate) {
     int success = rtlsdr_set_sample_rate(this->device, sample_rate);
 
     if (success != 0) {
         if (success == -EINVAL) {
             // The value is in a bad range
-            throw SourceException("Sample rate has invalid value");
+            throw DataSource::SourceException("Sample rate has invalid value");
         }
-        throw SourceException("Unable to set device sampling rate");
+        throw DataSource::SourceException("Unable to set device sampling rate");
     }
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::reset_buffer() {
+void RTLsdr::rtlsdr<T>::reset_buffer() {
     rtlsdr_reset_buffer(this->device);
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::callback(unsigned char *buf, uint32_t len, void *) {
+void RTLsdr::rtlsdr<T>::callback(unsigned char *buf, uint32_t len, void *) {
     std::vector<unsigned char> tmp(len);
 
     for (uint32_t i = 0; i < len; i++) {
@@ -121,7 +122,7 @@ void rtlsdr<T>::callback(unsigned char *buf, uint32_t len, void *) {
 }
 
 template<std::ptrdiff_t T>
-std::vector<unsigned char> rtlsdr<T>::fill_buffer() {
+std::vector<unsigned char> RTLsdr::rtlsdr<T>::fill_buffer() {
     this->data_available.acquire();
     std::unique_lock scope(this->buffer_mtx);
     // Get the data away from the list so we can unlock the mutex.
@@ -132,12 +133,12 @@ std::vector<unsigned char> rtlsdr<T>::fill_buffer() {
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::start(uint32_t bufnum, uint32_t buffer_length, void* cbx) {
+void RTLsdr::rtlsdr<T>::start(uint32_t bufnum, uint32_t buffer_length, void* cbx) {
     this->reader_handle = std::thread(this->threadEntryPoint, cbx, bufnum, buffer_length);
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t buffer_length) {
+void RTLsdr::rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t buffer_length) {
     /*
      * \param bufnum optional buffer count, bufnum * buffer_length = overall buffer size
      *		  set to 0 for default buffer count (15)
@@ -157,15 +158,15 @@ void rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t buffer_len
                       bufnum,
                       buffer_length
     )) {
-        throw SourceException("Failed starting device in asynchronous mode");
+        throw DataSource::SourceException("Failed starting device in asynchronous mode");
     }
 
 }
 
 template<std::ptrdiff_t T>
-void rtlsdr<T>::kill() {
+void RTLsdr::rtlsdr<T>::kill() {
     if (!rtlsdr_cancel_async(this->device)) {
-        throw SourceException("Failed canceling device operations");
+        throw DataSource::SourceException("Failed canceling device operations");
     }
     this->reader_handle.join();
 }

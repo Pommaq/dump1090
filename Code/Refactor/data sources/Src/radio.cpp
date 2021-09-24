@@ -1,8 +1,9 @@
 #include "radio.h"
+#include "rtlsdr.h"
 
 template<std::ptrdiff_t T>
-radio<T>::radio(rtlsdr<T> &&device, int gain, bool enable_agc, long long int freq, int sample_rate, uint32_t bufnum,
-                uint32_t buffer_length, void *ctx) {
+Radio::radio<T>::radio(RTLsdr::rtlsdr<T> &&device, int gain, bool enable_agc, long long int freq, int sample_rate, uint32_t bufnum,
+                       uint32_t buffer_length, void *ctx) {
     /*
      * \param bufnum optional buffer count, bufnum * buffer_length = overall buffer size
      *		  set to 0 for default buffer count (15)
@@ -24,11 +25,11 @@ radio<T>::radio(rtlsdr<T> &&device, int gain, bool enable_agc, long long int fre
     this->ctx = ctx;
 
 
-    bool manual_gain_control = (gain != MODES_AUTO_GAIN);
+    bool manual_gain_control = (gain != RTLsdr::settings::MODES_AUTO_GAIN);
     this->device.set_gain_mode(manual_gain_control);
 
     if (manual_gain_control) {
-        if (gain == MODES_MAX_GAIN) {
+        if (gain == RTLsdr::settings::MODES_MAX_GAIN) {
             /* Find the maximum gain available. */
             std::array<int, 100> gains{};
 
@@ -47,12 +48,12 @@ radio<T>::radio(rtlsdr<T> &&device, int gain, bool enable_agc, long long int fre
 }
 
 template<std::ptrdiff_t T>
-std::vector<unsigned char> radio<T>::get_data() {
+std::vector<unsigned char> Radio::radio<T>::get_data() {
     return this->device.fill_buffer();
 }
 
 template<std::ptrdiff_t T>
-void radio<T>::run() {
+void Radio::radio<T>::run() {
     this->device.start(this->bufnum, this->buffer_length, this->cbx);
 
 }

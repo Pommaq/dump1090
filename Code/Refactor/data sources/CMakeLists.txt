@@ -9,4 +9,4 @@ message("Building library data_sources at ${PROJECT_SOURCE_DIR}")
 add_library(
         data_sources STATIC
         Src/data_source.cpp Headers/data_source.h
-        Src/radio.cpp Headers/radio.h Src/file.cpp Headers/file.h Src/data_iterator.cpp Headers/data_iterator.h Src/rtlsdr.cpp Headers/rtlsdr.h)
+        Src/radio.cpp Headers/radio.h Src/file.cpp Headers/file.h Src/rtlsdr.cpp Headers/rtlsdr.h)
