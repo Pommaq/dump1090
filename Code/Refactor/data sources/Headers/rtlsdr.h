@@ -13,7 +13,7 @@
 #include <vector>
 
 #include "rtl-sdr.h"
-#include "data_source.h"
+#include "DataSource.h"
 
 /*
  * Class responsible for making sure the sdr handle is allocated and released properly.
