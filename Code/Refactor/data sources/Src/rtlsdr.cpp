@@ -1,5 +1,5 @@
 #include "rtlsdr.h"
-#include "data_source.h"
+#include "DataSource.h"
 
 template<std::ptrdiff_t T>
 RTLsdr::rtlsdr<T>::rtlsdr(int device_index) {
@@ -7,13 +7,13 @@ RTLsdr::rtlsdr<T>::rtlsdr(int device_index) {
 
     uint32_t device_count = rtlsdr_get_device_count();
     if (!device_count) {
-        throw DataSource::SourceException("No SDR devices found");
+        throw datasource::SourceException("No SDR devices found");
     }
 
     rtlsdr_get_device_usb_strings(device_index, this->vendor.data(), this->product.data(), this->serial.data());
 
     if (rtlsdr_open(&(this->device), device_index) < 0) {
-        throw DataSource::SourceException("Unable to open SDR device");
+        throw datasource::SourceException("Unable to open SDR device");
     }
 }
 
@@ -23,7 +23,7 @@ RTLsdr::rtlsdr<T>::~rtlsdr() {
         try {
             this->kill();
         }
-        catch (DataSource::SourceException &e) {
+        catch (datasource::SourceException &e) {
             // pass
         }
 
@@ -53,7 +53,7 @@ int RTLsdr::rtlsdr<T>::get_tuner_gains(std::array<int, 100> &buffer) {
     /* Given buffer state will be undefined if SDRAttributeError is thrown */
     int numgain = rtlsdr_get_tuner_gains(this->device, buffer.data());
     if (!numgain) {
-        throw DataSource::SourceException("Unable to get tuner gain levels");
+        throw datasource::SourceException("Unable to get tuner gain levels");
     }
     return numgain;
 }
@@ -62,7 +62,7 @@ template<std::ptrdiff_t T>
 void RTLsdr::rtlsdr<T>::set_tuner_gain(int gain) {
     int cant_set_gain = rtlsdr_set_tuner_gain(this->device, gain);
     if (cant_set_gain) {
-        throw DataSource::SourceException("Unable to set tuner gain level");
+        throw datasource::SourceException("Unable to set tuner gain level");
     }
 }
 
@@ -70,7 +70,7 @@ template<std::ptrdiff_t T>
 void RTLsdr::rtlsdr<T>::set_freq_correction(int ppm) {
     int success = rtlsdr_set_freq_correction(this->device, ppm);
     if (!success) {
-        throw DataSource::SourceException("Unable to set frequency correction");
+        throw datasource::SourceException("Unable to set frequency correction");
     }
 }
 
@@ -78,7 +78,7 @@ template<std::ptrdiff_t T>
 void RTLsdr::rtlsdr<T>::set_agc_mode(bool enabled) {
     int success = rtlsdr_set_agc_mode(this->device, enabled);
     if (!success) {
-        throw DataSource::SourceException("Unable to set AGC mode");
+        throw datasource::SourceException("Unable to set AGC mode");
     }
 }
 
@@ -86,7 +86,7 @@ template<std::ptrdiff_t T>
 void RTLsdr::rtlsdr<T>::set_center_freq(long long int freq) {
     int success = rtlsdr_set_center_freq(this->device, freq);
     if (!success) {
-        throw DataSource::SourceException("Unable to set center frequency");
+        throw datasource::SourceException("Unable to set center frequency");
     }
 }
 
@@ -97,9 +97,9 @@ void RTLsdr::rtlsdr<T>::set_sample_rate(int sample_rate) {
     if (success != 0) {
         if (success == -EINVAL) {
             // The value is in a bad range
-            throw DataSource::SourceException("Sample rate has invalid value");
+            throw datasource::SourceException("Sample rate has invalid value");
         }
-        throw DataSource::SourceException("Unable to set device sampling rate");
+        throw datasource::SourceException("Unable to set device sampling rate");
     }
 }
 
@@ -158,7 +158,7 @@ void RTLsdr::rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t bu
                       bufnum,
                       buffer_length
     )) {
-        throw DataSource::SourceException("Failed starting device in asynchronous mode");
+        throw datasource::SourceException("Failed starting device in asynchronous mode");
     }
 
 }
@@ -166,7 +166,7 @@ void RTLsdr::rtlsdr<T>::threadEntryPoint(void *ctx, uint32_t bufnum, uint32_t bu
 template<std::ptrdiff_t T>
 void RTLsdr::rtlsdr<T>::kill() {
     if (!rtlsdr_cancel_async(this->device)) {
-        throw DataSource::SourceException("Failed canceling device operations");
+        throw datasource::SourceException("Failed canceling device operations");
     }
     this->reader_handle.join();
 }
