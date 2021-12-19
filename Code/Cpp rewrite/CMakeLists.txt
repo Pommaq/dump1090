@@ -1,6 +1,6 @@
 set(CMAKE_CXX_STANDARD 20)
-include_directories(${PROJECT_SOURCE_DIR}/Src)
-include_directories(${PROJECT_SOURCE_DIR}/Headers)
+include_directories("../Refactor/Modes Handling/Src")
+include_directories("../Refactor/Modes Handling/Headers")
 link_directories(${CMAKE_BINARY_DIR}/Src)
 link_directories(${CMAKE_BINARY_DIR}/Headers)
 
@@ -19,7 +19,7 @@ add_executable(dump1090
         Src/main.cpp
         Src/anet.cpp Headers/anet.hpp
         Src/PacketHandling.cpp Headers/PacketHandling.hpp
-        Src/Expanded_set.cpp Headers/Expanded_set.hpp
+        Headers/Expanded_set.hpp
         Src/data_reader.cpp Headers/data_reader.hpp
         Src/Modes.cpp Headers/Modes.hpp
         Src/Utilities.cpp Headers/Utilities.hpp

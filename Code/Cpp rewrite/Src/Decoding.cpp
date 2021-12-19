@@ -8,6 +8,7 @@
 #include "../Headers/debugging.hpp"
 #include "../Headers/Utilities.hpp"
 #include "../Headers/modesMessage.h"
+#include "../Headers/Expanded_set.hpp"
 
 /* ===================== Mode S detection and decoding  ===================== */
 /* Parity table for MODE S Messages.
@@ -125,8 +126,15 @@ int decodeHexMessage(struct client *c) {
         if (high == -1 || low == -1) return 0;
         msg[j / 2] = (high << 4) | low;
     }
-    modesMessage mm(msg);
-    mm.updatePlanes();
+    modesMessage mm(msg, -1);
+    if (mm.crcok == -1){
+        mm.errorfix(Modes.aggressive);
+    }
+    if (mm.crcok == 0){
+        mm.decodeMessage();
+        mm.updatePlanes();
+    }
+
     return 0;
 }
 
@@ -210,7 +218,7 @@ void applyPhaseCorrection(uint16_t *m) {
 /* Detect a Mode S messages inside the magnitude buffer pointed by 'm' and of
  * size 'mlen' bytes. Every detected Mode S bitf_message is convert it into a
  * stream of bits and passed to the function to display it. */
-void detectModeS(uint16_t *m, uint32_t mlen) {
+void detectModeS(uint16_t *m, uint32_t mlen, equeue <modesMessage> &bad_queue, equeue <modesMessage> &good_queue) {
     unsigned char bits[MODES_LONG_MSG_BITS];
     unsigned char msg[MODES_LONG_MSG_BITS / 2];
     uint16_t aux[MODES_LONG_MSG_BITS * 2];
@@ -241,6 +249,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
      * 9   -------------------
      */
     for (j = 0; j < mlen - MODES_FULL_LEN * 2; j++) {
+        static uint64_t sequence_num = 0; /* Used for keeping track of where the packet was grabbed from */
+        sequence_num++;
+
         int low, high, delta, i, errors;
         int good_message = 0;
 
@@ -377,9 +388,22 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
         if (errors == 0 || (Modes.aggressive && errors < 3)) {
 
             /* Decode the received bitf_message and update statistics */
-            modesMessage mm(msg);
-            // TODO: Move this statistics part to somewhere else so we can do errorfixes on a separate thread.
+            modesMessage mm(msg, sequence_num);
+            int crcOk = mm.crcok;
+            int errorbit = mm.errorbit;
 
+            if (!mm.crcok){
+                bad_queue.insert_packet(mm);
+            }
+            else{
+                /* Its good. */
+                good_queue.insert_packet(mm);
+            }
+
+            // TODO: Move this statistics part to somewhere else so we can do errorfixes on a separate thread.
+            //  Run it in main on all packets retrieved from good_messages
+            mm.errorfix(Modes.aggressive);
+            mm.decodeMessage();
             /* Update statistics. */
             if (mm.crcok || use_correction) {
                 if (errors == 0) Modes.stat_demodulated++;
@@ -418,9 +442,9 @@ void detectModeS(uint16_t *m, uint32_t mlen) {
                 if (use_correction)
                     mm.phase_corrected = 1;
             }
-
             /* Pass data to the next layer */
             mm.updatePlanes();
+
         } else {
             if (Modes.debug & MODES_DEBUG_DEMODERR && use_correction) {
                 printf("The following bitf_message has %d demod errors\n", errors);
@@ -570,6 +594,9 @@ int fixTwoBitsErrors(unsigned char *msg, int bits) {
                  * 'i' on the left. This is possible since 'i' will always
                  * be non-zero because i starts from j+1. */
                 return j | (i << 8);
+            }
+            else {
+                aux[byte2] ^= bitmask2; /* Flip back i-th bit. */
             }
         }
     }
