@@ -45,6 +45,10 @@ Radio::radio<T>::radio(RTLsdr::rtlsdr<T> &&device, int gain, bool enable_agc, lo
     this->device.set_center_freq(freq);
     this->device.set_sample_rate(sample_rate);
     this->device.reset_buffer();
+
+    // Start the recording
+    this->device.start(this->bufnum, this->buffer_length, this->cbx);
+
 }
 
 template<std::ptrdiff_t T>
@@ -52,8 +56,3 @@ std::vector<unsigned char> Radio::radio<T>::get_data() {
     return this->device.fill_buffer();
 }
 
-template<std::ptrdiff_t T>
-void Radio::radio<T>::run() {
-    this->device.start(this->bufnum, this->buffer_length, this->cbx);
-
-}

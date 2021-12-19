@@ -29,7 +29,6 @@ namespace datasource {
         /* Provides an interface to read data in a stream-like fashion from a custom source */
 
     public:
-        virtual void run() = 0;
         constexpr virtual std::vector<unsigned char>  get_data() = 0;
 
         struct Iterator {

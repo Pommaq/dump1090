@@ -19,7 +19,6 @@ public:
     radio(RTLsdr::rtlsdr<T> &&device, int gain, bool enable_agc, long long int freq, int sample_rate, uint32_t bufnum,
           uint32_t buffer_length, void *ctx);
 
-    void run() override;
     std::vector<unsigned char> get_data() override;
 };
 }
